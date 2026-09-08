@@ -1,0 +1,66 @@
+export const initialAppData = {
+  currentResident: { id: 'MOR-001', name: 'Carlos Silva', cpf: '***.***.***-42', email: 'carlos@email.com', phone: '(81) 99999-9999', tower: 'Torre A', unit: '203', isOwner: true, isResident: true },
+  residents: [
+    { id: 'MOR-001', name: 'Carlos Silva', cpf: '123.456.789-42', email: 'carlos@email.com', phone: '(81) 99999-9999', tower: 'Torre A', unit: '203', isOwner: true, isResident: true, status: 'ATIVO' },
+    { id: 'MOR-002', name: 'Ana Souza', cpf: '987.654.321-18', email: 'ana@email.com', phone: '(81) 98888-1111', tower: 'Torre B', unit: '305', isOwner: true, isResident: true, status: 'ATIVO' },
+    { id: 'MOR-003', name: 'João Santos', cpf: '456.123.789-71', email: 'joao@email.com', phone: '(81) 97777-2222', tower: 'Torre A', unit: '108', isOwner: false, isResident: true, status: 'ATIVO' },
+    { id: 'MOR-004', name: 'Mariana Oliveira', cpf: '741.852.963-36', email: 'mariana@email.com', phone: '(81) 96666-3333', tower: 'Torre C', unit: '402', isOwner: true, isResident: true, status: 'ATIVO' },
+    { id: 'MOR-005', name: 'Ricardo Lima', cpf: '159.753.486-54', email: 'ricardo@email.com', phone: '(81) 95555-4444', tower: 'Torre B', unit: '207', isOwner: false, isResident: true, status: 'INATIVO' },
+  ],
+  units: [
+    { id: 'UNI-203A', number: '203', tower: 'Torre A', status: 'OCUPADO', owners: ['Carlos Silva'], residents: ['Carlos Silva', 'Mariana Silva'] },
+    { id: 'UNI-305B', number: '305', tower: 'Torre B', status: 'OCUPADO', owners: ['Ana Souza'], residents: ['Ana Souza'] },
+    { id: 'UNI-108A', number: '108', tower: 'Torre A', status: 'OCUPADO', owners: ['Roberto Lima'], residents: ['João Santos'] },
+    { id: 'UNI-402C', number: '402', tower: 'Torre C', status: 'LIVRE', owners: ['Mariana Oliveira'], residents: [] },
+    { id: 'UNI-207B', number: '207', tower: 'Torre B', status: 'RESERVADO', owners: ['Ricardo Almeida'], residents: ['Ricardo Lima'] },
+  ],
+  visitors: [
+    { id: 'VIS-1001', name: 'Mariana Souza', cpf: '111.222.333-44', phone: '(81) 98888-0001', tower: 'Torre A', unit: '203', resident: 'Carlos Silva', date: '2026-09-08', time: '14:30', notes: 'Visita familiar', status: 'AUTORIZADO', source: 'MORADOR' },
+    { id: 'VIS-1002', name: 'Lucas Oliveira', cpf: '222.333.444-55', phone: '', tower: 'Torre B', unit: '305', resident: 'Ana Souza', date: '2026-09-08', time: '16:00', notes: '', status: 'ENTROU', entryAt: 'Hoje · 15:58', source: 'PORTARIA' },
+    { id: 'VIS-1003', name: 'Pedro Henrique', cpf: '333.444.555-66', phone: '', tower: 'Torre A', unit: '110', resident: 'Fernanda Alves', date: '2026-09-08', time: '15:20', notes: '', status: 'PENDENTE', source: 'PORTARIA' },
+    { id: 'VIS-1004', name: 'Roberto Santos', cpf: '444.555.666-77', phone: '', tower: 'Torre A', unit: '108', resident: 'João Santos', date: '2026-09-07', time: '11:10', notes: '', status: 'SAIU', entryAt: '07/09 · 11:08', exitAt: '07/09 · 12:45', source: 'PORTARIA' },
+    { id: 'VIS-1005', name: 'Camila Ferreira', cpf: '555.666.777-88', phone: '', tower: 'Torre C', unit: '402', resident: 'Mariana Oliveira', date: '2026-09-08', time: '18:30', notes: '', status: 'RECUSADO', source: 'PORTARIA' },
+  ],
+  providers: [
+    { id: 'PRE-201', name: 'José Almeida', cpf: '101.202.303-44', company: 'EletroMais', service: 'Eletricista', tower: 'Torre B', location: '305', date: '2026-09-08', time: '09:15', notes: '', status: 'ENTROU', entryAt: 'Hoje · 09:15' },
+    { id: 'PRE-202', name: 'Marcos Santos', cpf: '202.303.404-55', company: 'HidroLar', service: 'Manutenção hidráulica', tower: 'Área comum', location: 'Piscina', date: '2026-09-08', time: '10:40', notes: '', status: 'ENTROU', entryAt: 'Hoje · 10:40' },
+    { id: 'PRE-203', name: 'André Oliveira', cpf: '303.404.505-66', company: 'Conecta', service: 'Instalação de internet', tower: 'Torre A', location: '203', date: '2026-09-08', time: '14:00', notes: '', status: 'ESPERADO' },
+    { id: 'PRE-204', name: 'Paulo Ferreira', cpf: '404.505.606-77', company: 'EletroMais', service: 'Manutenção elétrica', tower: 'Área comum', location: 'Garagem', date: '2026-09-07', time: '11:20', notes: '', status: 'SAIU', entryAt: '07/09 · 09:00', exitAt: '07/09 · 11:20' },
+  ],
+  packages: [
+    { id: 'ENC-1048', tower: 'Torre A', unit: '203', resident: 'Carlos Silva', notes: 'Caixa média', receivedAt: 'Hoje · 14:32', doorman: 'João Oliveira', status: 'AGUARDANDO_RETIRADA' },
+    { id: 'ENC-1047', tower: 'Torre B', unit: '305', resident: 'Ana Souza', notes: '', receivedAt: 'Hoje · 12:18', doorman: 'João Oliveira', status: 'AGUARDANDO_RETIRADA' },
+    { id: 'ENC-1046', tower: 'Torre C', unit: '402', resident: 'Mariana Oliveira', notes: '', receivedAt: 'Hoje · 09:40', doorman: 'Maria Santos', status: 'AGUARDANDO_RETIRADA' },
+    { id: 'ENC-1042', tower: 'Torre A', unit: '108', resident: 'João Santos', notes: '', receivedAt: '01/09 · 17:45', doorman: 'Maria Santos', status: 'RETIRADA', withdrawnAt: '01/09 · 19:02' },
+    { id: 'ENC-1038', tower: 'Torre B', unit: '207', resident: 'Ricardo Lima', notes: '', receivedAt: '31/08 · 15:20', doorman: 'João Oliveira', status: 'DEVOLVIDA' },
+  ],
+  reservations: [
+    { id: 'RES-301', area: 'Salão de Festas', resident: 'Carlos Silva', tower: 'Torre A', unit: '203', date: '2026-09-15', startTime: '18:00', endTime: '23:00', notes: 'Aniversário', status: 'CONFIRMADA' },
+    { id: 'RES-302', area: 'Churrasqueira', resident: 'Ana Souza', tower: 'Torre B', unit: '305', date: '2026-09-18', startTime: '12:00', endTime: '17:00', notes: '', status: 'CONFIRMADA' },
+    { id: 'RES-303', area: 'Salão de Festas', resident: 'Mariana Silva', tower: 'Torre A', unit: '203', date: '2026-09-22', startTime: '17:00', endTime: '22:00', notes: 'Confraternização', status: 'AGUARDANDO_APROVACAO', requestedByOwner: false },
+    { id: 'RES-304', area: 'Quadra', resident: 'João Santos', tower: 'Torre A', unit: '108', date: '2026-09-20', startTime: '19:00', endTime: '20:00', notes: '', status: 'CONCLUIDA' },
+    { id: 'RES-305', area: 'Academia', resident: 'Ricardo Lima', tower: 'Torre B', unit: '207', date: '2026-09-10', startTime: '07:00', endTime: '08:00', notes: '', status: 'CANCELADA' },
+  ],
+  commonAreas: ['Salão de Festas', 'Churrasqueira', 'Quadra', 'Academia'],
+  notices: [
+    { id: 'AVI-401', title: 'Interrupção no abastecimento de água', content: 'O abastecimento da Torre B será interrompido temporariamente.', priority: 'URGENTE', destination: 'Todo condomínio', tower: '', startDate: '2026-09-08', endDate: '2026-09-09', status: 'ATIVO' },
+    { id: 'AVI-402', title: 'Manutenção preventiva da piscina', content: 'A piscina ficará indisponível durante a manutenção.', priority: 'NORMAL', destination: 'Todo condomínio', tower: '', startDate: '2026-09-08', endDate: '2026-09-10', status: 'ATIVO' },
+    { id: 'AVI-403', title: 'Interdição temporária da garagem', content: 'Acesso restrito para manutenção.', priority: 'URGENTE', destination: 'Torre/Bloco específico', tower: 'Torre A', startDate: '2026-09-03', endDate: '2026-09-04', status: 'ENCERRADO' },
+  ],
+  tickets: [
+    { id: '#CH-0028', title: 'Vazamento na garagem', description: 'Vazamento próximo à vaga 203.', category: 'Manutenção', location: 'Garagem', priority: 'ALTA', notes: '', resident: 'Carlos Silva', tower: 'Torre A', unit: '203', openedAt: 'Hoje · 09:42', status: 'EM_ANALISE', comments: [] },
+    { id: '#CH-0027', title: 'Barulho excessivo durante a madrugada', description: 'Ocorrência de barulho recorrente.', category: 'Convivência', location: 'Torre B', priority: 'NORMAL', notes: '', resident: 'Ana Souza', tower: 'Torre B', unit: '305', openedAt: 'Hoje · 08:15', status: 'ABERTO', comments: [] },
+    { id: '#CH-0024', title: 'Lâmpada queimada no corredor', description: 'Corredor do terceiro andar.', category: 'Manutenção', location: 'Torre A', priority: 'BAIXA', notes: '', resident: 'João Santos', tower: 'Torre A', unit: '108', openedAt: '30/08 · 18:15', status: 'EM_ATENDIMENTO', comments: [] },
+    { id: '#CH-0018', title: 'Iluminação da garagem', description: 'Revisão concluída.', category: 'Manutenção', location: 'Garagem', priority: 'BAIXA', notes: '', resident: 'Ricardo Lima', tower: 'Torre B', unit: '207', openedAt: '27/08 · 10:20', status: 'RESOLVIDO', comments: [] },
+  ],
+  history: [
+    { id: 'HIS-1', date: '2026-09-08', time: '14:32', type: 'Encomenda registrada', reference: 'ENC-1048 · Carlos Silva', unit: '203 · Torre A', user: 'João Oliveira' },
+    { id: 'HIS-2', date: '2026-09-08', time: '14:20', type: 'Visitante entrou', reference: 'Mariana Souza', unit: '203 · Torre A', user: 'João Oliveira' },
+    { id: 'HIS-3', date: '2026-09-08', time: '13:25', type: 'Prestador saiu', reference: 'Marcos Santos', unit: 'Área comum', user: 'João Oliveira' },
+    { id: 'HIS-4', date: '2026-09-08', time: '12:18', type: 'Encomenda registrada', reference: 'ENC-1047 · Ana Souza', unit: '305 · Torre B', user: 'Maria Santos' },
+  ],
+  notifications: [
+    { id: 'NOT-1', unit: '203', title: 'Nova encomenda recebida', text: 'A encomenda ENC-1048 está aguardando retirada.', createdAt: 'Hoje · 14:32', read: false },
+  ],
+  condominium: { name: 'Condomínio Parque das Flores', address: 'Rua das Palmeiras, 250', phone: '(81) 3333-4455', email: 'contato@parquedasflores.com.br', allowResidentBookings: true },
+}

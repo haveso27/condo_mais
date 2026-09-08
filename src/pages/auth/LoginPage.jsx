@@ -27,7 +27,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout variant="login">
       <div className="auth-heading">
         <h2>Acesse sua conta</h2>
         <p>Entre com seu CPF e senha para acessar o Condo+.</p>

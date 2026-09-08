@@ -1,8 +1,8 @@
 import Brand from '../components/Brand'
 
-export default function AuthLayout({ children }) {
+export default function AuthLayout({ children, variant = 'default' }) {
   return (
-    <main className="auth-shell">
+    <main className={`auth-shell auth-shell--${variant}`}>
       <section className="auth-visual" aria-label="Condomínio moderno">
         <div className="auth-visual__copy">
           <h1>Gestão condominial<br />simples e conectada.</h1>

@@ -2,6 +2,7 @@ import { Archive, Building2, CalendarCheck, Contact, Headphones, Package, UsersR
 import { useNavigate } from 'react-router-dom'
 import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
+import { useAppData } from '../../context/AppDataContext'
 import DesktopLayout from '../../layouts/DesktopLayout'
 
 function Row({ icon: Icon, title, subtitle, meta, tone = 'green', badge }) {
@@ -10,7 +11,13 @@ function Row({ icon: Icon, title, subtitle, meta, tone = 'green', badge }) {
 
 export default function DesktopDashboard({ role }) {
   const navigate = useNavigate()
+  const { data } = useAppData()
   const portaria = role === 'portaria'
+  const pendingPackages = data.packages.filter((item) => item.status === 'AGUARDANDO_RETIRADA').length
+  const presentVisitors = data.visitors.filter((item) => item.status === 'ENTROU').length
+  const presentProviders = data.providers.filter((item) => item.status === 'ENTROU').length
+  const expectedVisitors = data.visitors.filter((item) => ['PENDENTE', 'AUTORIZADO'].includes(item.status)).length
+  const activeTickets = data.tickets.filter((item) => !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
   return (
     <DesktopLayout role={role}>
       <section className="dashboard-page">
@@ -18,9 +25,9 @@ export default function DesktopDashboard({ role }) {
         <p>Confira {portaria ? 'as atividades da portaria hoje' : 'o que está acontecendo no condomínio hoje'}.</p>
         <div className="stat-grid">
           {(portaria ? [
-            [CalendarCheck, 'Visitantes previstos', '8', 'para hoje', 'violet'], [UsersRound, 'Visitantes presentes', '3', 'no condomínio', 'green'], [Archive, 'Encomendas', '6', 'aguardando retirada', 'pink'], [Contact, 'Prestadores presentes', '2', 'no condomínio', 'green'],
+            [CalendarCheck, 'Visitantes previstos', String(expectedVisitors), 'para hoje', 'violet'], [UsersRound, 'Visitantes presentes', String(presentVisitors), 'no condomínio', 'green'], [Archive, 'Encomendas', String(pendingPackages), 'aguardando retirada', 'pink'], [Contact, 'Prestadores presentes', String(presentProviders), 'no condomínio', 'green'],
           ] : [
-            [Building2, 'Unidades', '128', '120 ocupadas', 'violet'], [Package, 'Encomendas', '6', 'aguardando retirada', 'pink'], [CalendarCheck, 'Reservas', '8', 'nos próximos 7 dias', 'green'], [Headphones, 'Chamados', '5', 'em aberto', 'red'],
+            [Building2, 'Unidades', String(data.units.length), `${data.units.filter((item) => item.status === 'OCUPADO').length} ocupadas`, 'violet'], [Package, 'Encomendas', String(pendingPackages), 'aguardando retirada', 'pink'], [CalendarCheck, 'Reservas', String(data.reservations.filter((item) => item.status === 'CONFIRMADA').length), 'confirmadas', 'green'], [Headphones, 'Chamados', String(activeTickets), 'em aberto', 'red'],
           ]).map(([icon, label, value, detail, tone]) => <StatCard key={label} icon={icon} label={label} value={value} detail={detail} tone={tone} />)}
         </div>
         {portaria && <><h2 className="eyebrow">Ações rápidas</h2><div className="desktop-actions"><button onClick={() => navigate('/portaria/visitantes')}>+ Registrar visitante</button><button onClick={() => navigate('/portaria/encomendas')}>+ Registrar encomenda</button><button onClick={() => navigate('/portaria/prestadores')}>+ Registrar prestador</button></div></>}
