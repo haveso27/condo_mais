@@ -1,11 +1,11 @@
 export const initialAppData = {
-  currentResident: { id: 'MOR-001', name: 'Carlos Silva', cpf: '***.***.***-42', email: 'carlos@email.com', phone: '(81) 99999-9999', tower: 'Torre A', unit: '203', isOwner: true, isResident: true },
+  currentResident: { id: 'MOR-001', name: 'Carlos Silva', cpf: '***.***.***-42', email: 'carlos@email.com', phone: '(81) 99999-9999', tower: 'Torre A', unit: '203', relation: 'PROPRIETARIO', isOwner: true },
   residents: [
-    { id: 'MOR-001', name: 'Carlos Silva', cpf: '123.456.789-42', email: 'carlos@email.com', phone: '(81) 99999-9999', tower: 'Torre A', unit: '203', isOwner: true, isResident: true, status: 'ATIVO' },
-    { id: 'MOR-002', name: 'Ana Souza', cpf: '987.654.321-18', email: 'ana@email.com', phone: '(81) 98888-1111', tower: 'Torre B', unit: '305', isOwner: true, isResident: true, status: 'ATIVO' },
-    { id: 'MOR-003', name: 'João Santos', cpf: '456.123.789-71', email: 'joao@email.com', phone: '(81) 97777-2222', tower: 'Torre A', unit: '108', isOwner: false, isResident: true, status: 'ATIVO' },
-    { id: 'MOR-004', name: 'Mariana Oliveira', cpf: '741.852.963-36', email: 'mariana@email.com', phone: '(81) 96666-3333', tower: 'Torre C', unit: '402', isOwner: true, isResident: true, status: 'ATIVO' },
-    { id: 'MOR-005', name: 'Ricardo Lima', cpf: '159.753.486-54', email: 'ricardo@email.com', phone: '(81) 95555-4444', tower: 'Torre B', unit: '207', isOwner: false, isResident: true, status: 'INATIVO' },
+    { id: 'MOR-001', name: 'Carlos Silva', cpf: '123.456.789-42', email: 'carlos@email.com', phone: '(81) 99999-9999', tower: 'Torre A', unit: '203', relation: 'PROPRIETARIO', isOwner: true, status: 'ATIVO' },
+    { id: 'MOR-002', name: 'Ana Souza', cpf: '987.654.321-18', email: 'ana@email.com', phone: '(81) 98888-1111', tower: 'Torre B', unit: '305', relation: 'PROPRIETARIO', isOwner: true, status: 'ATIVO' },
+    { id: 'MOR-003', name: 'João Santos', cpf: '456.123.789-71', email: 'joao@email.com', phone: '(81) 97777-2222', tower: 'Torre A', unit: '108', relation: 'INQUILINO', isOwner: false, status: 'ATIVO' },
+    { id: 'MOR-004', name: 'Mariana Oliveira', cpf: '741.852.963-36', email: 'mariana@email.com', phone: '(81) 96666-3333', tower: 'Torre C', unit: '402', relation: 'PROPRIETARIO', isOwner: true, status: 'ATIVO' },
+    { id: 'MOR-005', name: 'Ricardo Lima', cpf: '159.753.486-54', email: 'ricardo@email.com', phone: '(81) 95555-4444', tower: 'Torre B', unit: '207', relation: 'INQUILINO', isOwner: false, status: 'INATIVO' },
   ],
   units: [
     { id: 'UNI-203A', number: '203', tower: 'Torre A', status: 'OCUPADO', owners: ['Carlos Silva'], residents: ['Carlos Silva', 'Mariana Silva'] },
@@ -15,11 +15,12 @@ export const initialAppData = {
     { id: 'UNI-207B', number: '207', tower: 'Torre B', status: 'RESERVADO', owners: ['Ricardo Almeida'], residents: ['Ricardo Lima'] },
   ],
   visitors: [
-    { id: 'VIS-1001', name: 'Mariana Souza', cpf: '111.222.333-44', phone: '(81) 98888-0001', tower: 'Torre A', unit: '203', resident: 'Carlos Silva', date: '2026-09-08', time: '14:30', notes: 'Visita familiar', status: 'AUTORIZADO', source: 'MORADOR' },
-    { id: 'VIS-1002', name: 'Lucas Oliveira', cpf: '222.333.444-55', phone: '', tower: 'Torre B', unit: '305', resident: 'Ana Souza', date: '2026-09-08', time: '16:00', notes: '', status: 'ENTROU', entryAt: 'Hoje · 15:58', source: 'PORTARIA' },
-    { id: 'VIS-1003', name: 'Pedro Henrique', cpf: '333.444.555-66', phone: '', tower: 'Torre A', unit: '110', resident: 'Fernanda Alves', date: '2026-09-08', time: '15:20', notes: '', status: 'PENDENTE', source: 'PORTARIA' },
-    { id: 'VIS-1004', name: 'Roberto Santos', cpf: '444.555.666-77', phone: '', tower: 'Torre A', unit: '108', resident: 'João Santos', date: '2026-09-07', time: '11:10', notes: '', status: 'SAIU', entryAt: '07/09 · 11:08', exitAt: '07/09 · 12:45', source: 'PORTARIA' },
-    { id: 'VIS-1005', name: 'Camila Ferreira', cpf: '555.666.777-88', phone: '', tower: 'Torre C', unit: '402', resident: 'Mariana Oliveira', date: '2026-09-08', time: '18:30', notes: '', status: 'RECUSADO', source: 'PORTARIA' },
+    { id: 'VIS-1001', name: 'Mariana Souza', cpf: '111.222.333-44', phone: '(81) 98888-0001', tower: 'Torre A', unit: '203', resident: 'Carlos Silva', startDate: '2026-09-23', startTime: '14:30', endDate: '2026-09-23', endTime: '22:00', notes: 'Visita familiar', status: 'AUTORIZADO', source: 'MORADOR' },
+    { id: 'VIS-1002', name: 'Lucas Oliveira', cpf: '222.333.444-55', phone: '', tower: 'Torre B', unit: '305', resident: 'Ana Souza', startDate: '2026-09-23', startTime: '15:00', endDate: '2026-09-23', endTime: '23:00', notes: '', status: 'ENTROU', entryAt: 'Hoje · 15:58', source: 'PORTARIA' },
+    { id: 'VIS-1003', name: 'Pedro Henrique', cpf: '333.444.555-66', phone: '', tower: 'Torre A', unit: '110', resident: 'Fernanda Alves', startDate: '2026-09-24', startTime: '15:20', endDate: '2026-09-24', endTime: '18:00', notes: '', status: 'PENDENTE', source: 'PORTARIA' },
+    { id: 'VIS-1004', name: 'Roberto Santos', cpf: '444.555.666-77', phone: '', tower: 'Torre A', unit: '108', resident: 'João Santos', startDate: '2026-09-22', startTime: '11:10', endDate: '2026-09-22', endTime: '12:45', notes: '', status: 'SAIU', entryAt: '22/09 · 11:08', exitAt: '22/09 · 12:45', source: 'PORTARIA' },
+    { id: 'VIS-1005', name: 'Camila Ferreira', cpf: '555.666.777-88', phone: '', tower: 'Torre C', unit: '402', resident: 'Mariana Oliveira', startDate: '2026-09-23', startTime: '18:30', endDate: '2026-09-23', endTime: '20:00', notes: '', status: 'RECUSADO', source: 'PORTARIA' },
+    { id: 'VIS-1006', name: 'Paula Mendes', cpf: '666.777.888-99', phone: '', tower: 'Torre A', unit: '203', resident: 'Carlos Silva', startDate: '2026-09-21', startTime: '09:00', endDate: '2026-09-21', endTime: '12:00', notes: '', status: 'AUTORIZADO', source: 'MORADOR' },
   ],
   providers: [
     { id: 'PRE-201', name: 'José Almeida', cpf: '101.202.303-44', company: 'EletroMais', service: 'Eletricista', tower: 'Torre B', location: '305', date: '2026-09-08', time: '09:15', notes: '', status: 'ENTROU', entryAt: 'Hoje · 09:15' },

@@ -1,28 +1,74 @@
-import { AlertTriangle, BellRing, CalendarDays, Package, UsersRound } from 'lucide-react'
+import { AlertTriangle, BellRing, CalendarDays, Package, Settings2, UsersRound, Wrench } from 'lucide-react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Modal from '../../components/Modal'
 import { useAppData } from '../../context/AppDataContext'
 import ResidentLayout from '../../layouts/ResidentLayout'
+import { visitorEffectiveStatus } from '../../services/visitantesService'
+
+const dashboardCards = [
+  { key: 'packages', label: 'Encomendas' },
+  { key: 'reservations', label: 'Reservas' },
+  { key: 'visitors', label: 'Visitantes' },
+  { key: 'tickets', label: 'Chamados' },
+  { key: 'notices', label: 'Avisos' },
+]
+
+const defaultCards = dashboardCards.map((item) => item.key)
+
+function loadCards(residentId) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(`condo-dashboard-cards-${residentId}`))
+    return Array.isArray(stored) ? stored.filter((key) => defaultCards.includes(key)) : defaultCards
+  } catch {
+    return defaultCards
+  }
+}
 
 export default function ResidentDashboard() {
   const navigate = useNavigate()
   const { data } = useAppData()
   const resident = data.currentResident
+  const [visibleCards, setVisibleCards] = useState(() => loadCards(resident.id))
+  const [draftCards, setDraftCards] = useState(visibleCards)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const packageCount = data.packages.filter((item) => item.unit === resident.unit && item.status === 'AGUARDANDO_RETIRADA').length
-  const visitorCount = data.visitors.filter((item) => item.unit === resident.unit && ['AUTORIZADO', 'ENTROU'].includes(item.status)).length
+  const visitorCount = data.visitors.filter((item) => item.unit === resident.unit && ['AUTORIZADO', 'ENTROU'].includes(visitorEffectiveStatus(item))).length
+  const ticketCount = data.tickets.filter((item) => item.unit === resident.unit && !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
   const noticeCount = data.notices.filter((item) => item.status === 'ATIVO' && (item.destination === 'Todo condomínio' || item.tower === resident.tower)).length
   const nextReservation = data.reservations.find((item) => item.unit === resident.unit && item.status === 'CONFIRMADA')
+  const cards = [
+    { key: 'packages', icon: Package, label: 'Encomendas', value: packageCount, detail: 'aguardando', route: '/morador/comunicados' },
+    { key: 'reservations', icon: CalendarDays, label: 'Próxima reserva', value: nextReservation ? `${nextReservation.date.slice(8, 10)}/${nextReservation.date.slice(5, 7)} · ${nextReservation.startTime}` : 'Nenhuma', detail: nextReservation?.area || 'Sem reserva', route: '/morador/reservas' },
+    { key: 'visitors', icon: UsersRound, label: 'Visitantes', value: visitorCount, detail: 'autorizado(s) no período', route: '/morador/visitantes' },
+    { key: 'tickets', icon: Wrench, label: 'Chamados', value: ticketCount, detail: 'em acompanhamento', route: '/morador/chamados' },
+    { key: 'notices', icon: BellRing, label: 'Avisos', value: noticeCount, detail: 'avisos ativos', route: '/morador/comunicados' },
+  ]
+
+  function saveCards() {
+    setVisibleCards(draftCards)
+    try {
+      localStorage.setItem(`condo-dashboard-cards-${resident.id}`, JSON.stringify(draftCards))
+    } catch {
+      // Mantém a personalização durante a sessão quando o navegador bloqueia o armazenamento local.
+    }
+    setSettingsOpen(false)
+  }
+
+  function toggleCard(key) {
+    setDraftCards((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])
+  }
+
   return (
     <ResidentLayout>
       <section className="resident-page resident-page--dashboard">
         <h1>Olá, {resident.name.split(' ')[0]}! <span>👋</span></h1>
         <p className="muted">Apartamento {resident.unit} · {resident.tower}</p>
         <button className="urgent-alert" onClick={() => navigate('/morador/comunicados/agua')}><AlertTriangle /><span><small>Aviso urgente</small><strong>Interrupção no abastecimento de água na Torre B.</strong><em>Ver detalhes →</em></span></button>
-        <h2>Resumo</h2>
+        <div className="dashboard-summary-heading"><h2>Resumo</h2><button className="text-link" onClick={() => { setDraftCards(visibleCards); setSettingsOpen(true) }}><Settings2 size={15} /> Personalizar</button></div>
         <div className="resident-stats">
-          <button onClick={() => navigate('/morador/comunicados')}><Package /><span><small>Encomendas</small><strong>{packageCount}</strong><em>aguardando</em></span></button>
-          <button onClick={() => navigate('/morador/reservas')}><CalendarDays /><span><small>Próxima reserva</small><strong>{nextReservation ? `${nextReservation.date.slice(8, 10)}/${nextReservation.date.slice(5, 7)} · ${nextReservation.startTime}` : 'Nenhuma'}</strong><em>{nextReservation?.area || 'Sem reserva'}</em></span></button>
-          <button onClick={() => navigate('/morador/visitantes')}><UsersRound /><span><small>Visitantes</small><strong>{visitorCount}</strong><em>autorizado(s) para hoje</em></span></button>
-          <button onClick={() => navigate('/morador/comunicados')}><BellRing /><span><small>Avisos</small><strong>{noticeCount}</strong><em>avisos ativos</em></span></button>
+          {cards.filter((card) => visibleCards.includes(card.key)).map(({ key, icon: Icon, label, value, detail, route }) => <button key={key} onClick={() => navigate(route)}><Icon /><span><small>{label}</small><strong>{value}</strong><em>{detail}</em></span></button>)}
+          {visibleCards.length === 0 && <p className="dashboard-empty">Nenhum card selecionado. Use “Personalizar” para escolher as informações do resumo.</p>}
         </div>
         <h2>Ações rápidas</h2>
         <div className="quick-actions"><button onClick={() => navigate('/morador/visitantes')}>+ Autorizar visitante</button><button onClick={() => navigate('/morador/reservas')}>+ Fazer reserva</button></div>
@@ -30,6 +76,10 @@ export default function ResidentDashboard() {
         <div className="notice-list"><button onClick={() => navigate('/morador/comunicados')}><i className="dot green" /><span><strong>Manutenção preventiva da piscina</strong><small>Hoje · Normal</small></span><b>›</b></button><button onClick={() => navigate('/morador/comunicados/agua')}><i className="dot red" /><span><strong>Interrupção no abastecimento de água</strong><small>Hoje · Urgente</small></span><b>›</b></button></div>
         <button className="text-link inline-link" onClick={() => navigate('/morador/comunicados')}>Ver todos os avisos →</button>
       </section>
+      <Modal open={settingsOpen} title="Personalizar resumo" onClose={() => setSettingsOpen(false)} onConfirm={saveCards} confirmLabel="Salvar preferências">
+        <p className="form-note dashboard-settings-note">Escolha quais informações deseja visualizar no Dashboard.</p>
+        <div className="dashboard-card-options">{dashboardCards.map((card) => <label className="form-checkbox" key={card.key}><input type="checkbox" checked={draftCards.includes(card.key)} onChange={() => toggleCard(card.key)} /> {card.label}</label>)}</div>
+      </Modal>
     </ResidentLayout>
   )
 }

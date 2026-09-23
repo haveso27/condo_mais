@@ -4,6 +4,7 @@ import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
 import DesktopLayout from '../../layouts/DesktopLayout'
+import { visitorEffectiveStatus } from '../../services/visitantesService'
 
 function Row({ icon: Icon, title, subtitle, meta, tone = 'green', badge }) {
   return <div className="activity-row"><span className={`row-icon row-icon--${tone}`}><Icon size={19} /></span><span><strong>{title}</strong><small>{subtitle}</small></span><span className="row-meta">{meta}{badge && <StatusBadge tone={tone}>{badge}</StatusBadge>}</span></div>
@@ -16,19 +17,20 @@ export default function DesktopDashboard({ role }) {
   const pendingPackages = data.packages.filter((item) => item.status === 'AGUARDANDO_RETIRADA').length
   const presentVisitors = data.visitors.filter((item) => item.status === 'ENTROU').length
   const presentProviders = data.providers.filter((item) => item.status === 'ENTROU').length
-  const expectedVisitors = data.visitors.filter((item) => ['PENDENTE', 'AUTORIZADO'].includes(item.status)).length
+  const expectedVisitors = data.visitors.filter((item) => ['PENDENTE', 'AUTORIZADO'].includes(visitorEffectiveStatus(item))).length
   const activeTickets = data.tickets.filter((item) => !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
+  const urgentTickets = data.tickets.filter((item) => ['ALTA', 'URGENTE'].includes(item.priority) && !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
   return (
     <DesktopLayout role={role}>
       <section className="dashboard-page">
         <h1>Olá, {portaria ? 'João' : 'Administrador'}!</h1>
         <p>Confira {portaria ? 'as atividades da portaria hoje' : 'o que está acontecendo no condomínio hoje'}.</p>
-        <div className="stat-grid">
+        <div className={`stat-grid${portaria ? ' stat-grid--portaria' : ''}`}>
           {(portaria ? [
-            [CalendarCheck, 'Visitantes previstos', String(expectedVisitors), 'para hoje', 'violet'], [UsersRound, 'Visitantes presentes', String(presentVisitors), 'no condomínio', 'green'], [Archive, 'Encomendas', String(pendingPackages), 'aguardando retirada', 'pink'], [Contact, 'Prestadores presentes', String(presentProviders), 'no condomínio', 'green'],
+            [CalendarCheck, 'Visitantes previstos', String(expectedVisitors), 'para hoje', 'violet'], [UsersRound, 'Visitantes presentes', String(presentVisitors), 'no condomínio', 'green'], [Archive, 'Encomendas', String(pendingPackages), 'aguardando retirada', 'pink'], [Contact, 'Prestadores presentes', String(presentProviders), 'no condomínio', 'green'], [Headphones, 'Chamados urgentes', String(urgentTickets), 'aguardando atenção', 'red', () => navigate('/portaria/chamados')],
           ] : [
             [Building2, 'Unidades', String(data.units.length), `${data.units.filter((item) => item.status === 'OCUPADO').length} ocupadas`, 'violet'], [Package, 'Encomendas', String(pendingPackages), 'aguardando retirada', 'pink'], [CalendarCheck, 'Reservas', String(data.reservations.filter((item) => item.status === 'CONFIRMADA').length), 'confirmadas', 'green'], [Headphones, 'Chamados', String(activeTickets), 'em aberto', 'red'],
-          ]).map(([icon, label, value, detail, tone]) => <StatCard key={label} icon={icon} label={label} value={value} detail={detail} tone={tone} />)}
+          ]).map(([icon, label, value, detail, tone, onClick]) => <StatCard key={label} icon={icon} label={label} value={value} detail={detail} tone={tone} onClick={onClick} />)}
         </div>
         {portaria && <><h2 className="eyebrow">Ações rápidas</h2><div className="desktop-actions"><button onClick={() => navigate('/portaria/visitantes')}>+ Registrar visitante</button><button onClick={() => navigate('/portaria/encomendas')}>+ Registrar encomenda</button><button onClick={() => navigate('/portaria/prestadores')}>+ Registrar prestador</button></div></>}
         <div className="dashboard-columns">

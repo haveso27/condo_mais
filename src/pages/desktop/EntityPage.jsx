@@ -20,7 +20,7 @@ import { visitantesService } from '../../services/visitantesService'
 const services = { visitors: visitantesService, providers: prestadoresService, packages: encomendasService, reservations: reservasService, notices: avisosService, tickets: chamadosService, residents: moradoresService, units: unidadesService }
 
 function toneFor(value = '') {
-  if (/urgente|alta|cancel|recus|inativo|devolvida/i.test(value)) return 'red'
+  if (/urgente|alta|cancel|recus|inativo|devolvida|expir/i.test(value)) return 'red'
   if (/pendente|aguardando|aberto/i.test(value)) return 'pink'
   if (/analise|atendimento|esperado|reservado/i.test(value)) return 'violet'
   return 'green'
@@ -33,7 +33,7 @@ function present(value) {
 }
 
 function cellValue(record, key, secondKey) {
-  if (key === 'isOwner') return { first: record.isOwner ? (record.isResident ? 'Proprietário e residente' : 'Proprietário') : 'Residente', second: '' }
+  if (key === 'relation') return { first: record.relation === 'PROPRIETARIO' ? 'Proprietário' : 'Inquilino', second: '' }
   const first = present(record[key])
   const second = secondKey ? present(record[secondKey]) : ''
   return { first, second: second === '—' ? '' : second }
@@ -43,6 +43,11 @@ function validate(fields, values) {
   const missing = fields.find((field) => field.required && !String(values[field.key] ?? '').trim())
   if (missing) return `Preencha o campo “${missing.label}”.`
   if (values.destination === 'Torre/Bloco específico' && !values.tower) return 'Selecione a Torre / Bloco.'
+  if (values.startDate && values.startTime && values.endDate && values.endTime) {
+    const start = new Date(`${values.startDate}T${values.startTime}:00`)
+    const end = new Date(`${values.endDate}T${values.endTime}:00`)
+    if (end <= start) return 'O término da autorização deve ser posterior ao início.'
+  }
   return ''
 }
 

@@ -4,9 +4,9 @@ const priorities = ['BAIXA', 'NORMAL', 'ALTA', 'URGENTE']
 export const entityConfigs = {
   visitantesPortaria: {
     collection: 'visitors', title: 'Visitantes', subtitle: 'Gerencie os acessos de visitantes do condomínio.', action: 'Registrar visitante', empty: 'Nenhum visitante encontrado.',
-    tabs: [['Todos', []], ['Aguardando autorização', ['PENDENTE']], ['Autorizados', ['AUTORIZADO']], ['Presentes', ['ENTROU']], ['Finalizados', ['SAIU', 'RECUSADO']]],
-    columns: [['Visitante', 'name', 'cpf'], ['Destino', 'unit', 'tower'], ['Morador responsável', 'resident'], ['Data / Horário', 'date', 'time'], ['Status', 'status']],
-    fields: [{ key: 'name', label: 'Nome', required: true }, { key: 'cpf', label: 'CPF', required: true }, { key: 'phone', label: 'Telefone' }, { key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'unit', label: 'Apartamento', required: true }, { key: 'resident', label: 'Morador responsável', required: true }, { key: 'notes', label: 'Observação', type: 'textarea' }, { key: 'authorized', label: 'Possui autorização prévia', type: 'checkbox' }],
+    tabs: [['Todos', []], ['Aguardando autorização', ['PENDENTE']], ['Autorizados', ['AUTORIZADO']], ['Presentes', ['ENTROU']], ['Finalizados', ['SAIU', 'RECUSADO', 'EXPIRADO']]],
+    columns: [['Visitante', 'name', 'cpf'], ['Destino', 'unit', 'tower'], ['Morador responsável', 'resident'], ['Início', 'startDate', 'startTime'], ['Término', 'endDate', 'endTime'], ['Status', 'status']],
+    fields: [{ key: 'name', label: 'Nome', required: true }, { key: 'cpf', label: 'CPF', required: true }, { key: 'phone', label: 'Telefone' }, { key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'unit', label: 'Apartamento', required: true }, { key: 'resident', label: 'Morador responsável', required: true }, { key: 'startDate', label: 'Data de início', type: 'date', required: true }, { key: 'startTime', label: 'Horário de início', type: 'time', required: true }, { key: 'endDate', label: 'Data de término', type: 'date', required: true }, { key: 'endTime', label: 'Horário de término', type: 'time', required: true }, { key: 'notes', label: 'Observação', type: 'textarea' }, { key: 'authorized', label: 'Possui autorização prévia', type: 'checkbox' }],
   },
   prestadores: {
     collection: 'providers', title: 'Prestadores', subtitle: 'Gerencie a entrada e saída de prestadores de serviço.', action: 'Registrar prestador', empty: 'Nenhum prestador encontrado.',
@@ -38,15 +38,15 @@ export const entityConfigs = {
   },
   moradores: {
     collection: 'residents', title: 'Moradores', subtitle: 'Gerencie os moradores cadastrados no condomínio.', action: 'Cadastrar morador', empty: 'Nenhum morador encontrado.',
-    tabs: [['Todos', []], ['Ativos', ['ATIVO']], ['Inativos', ['INATIVO']], ['Proprietários', ['PROPRIETARIO'], 'relation'], ['Residentes', ['RESIDENTE'], 'relation']],
-    columns: [['Morador', 'name', 'cpf'], ['Unidade', 'unit', 'tower'], ['Vínculo', 'isOwner', 'isResident'], ['Contato', 'email', 'phone'], ['Status', 'status']],
-    fields: [{ key: 'name', label: 'Nome', required: true }, { key: 'cpf', label: 'CPF', required: true }, { key: 'email', label: 'E-mail', type: 'email', required: true }, { key: 'phone', label: 'Telefone', required: true }, { key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'unit', label: 'Unidade', required: true }, { key: 'isOwner', label: 'Proprietário', type: 'checkbox' }, { key: 'isResident', label: 'Residente', type: 'checkbox' }],
+    tabs: [['Todos', []], ['Ativos', ['ATIVO']], ['Inativos', ['INATIVO']], ['Proprietários', ['PROPRIETARIO'], 'relation'], ['Inquilinos', ['INQUILINO'], 'relation']],
+    columns: [['Morador', 'name', 'cpf'], ['Unidade', 'unit', 'tower'], ['Vínculo', 'relation'], ['Contato', 'email', 'phone'], ['Status', 'status']],
+    fields: [{ key: 'name', label: 'Nome', required: true }, { key: 'cpf', label: 'CPF', required: true }, { key: 'email', label: 'E-mail', type: 'email', required: true }, { key: 'phone', label: 'Telefone', required: true }, { key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'unit', label: 'Unidade', required: true }, { key: 'relation', label: 'Vínculo com a unidade', type: 'select', options: ['PROPRIETARIO', 'INQUILINO'], required: true }],
   },
   unidades: {
     collection: 'units', title: 'Unidades', subtitle: 'Gerencie as unidades do condomínio.', action: 'Nova unidade', empty: 'Nenhuma unidade encontrada.',
     tabs: [['Todas', []], ['Ocupadas', ['OCUPADO']], ['Livres', ['LIVRE']], ['Inativas', ['INATIVO']], ['Reservadas', ['RESERVADO']]],
     columns: [['Unidade', 'number'], ['Torre / Bloco', 'tower'], ['Proprietários', 'owners'], ['Moradores', 'residents'], ['Status', 'status']],
-    fields: [{ key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'number', label: 'Número / identificação', required: true }, { key: 'status', label: 'Status', type: 'select', options: ['OCUPADO', 'LIVRE', 'INATIVO', 'RESERVADO'], required: true }, { key: 'owner', label: 'Proprietário vinculado' }, { key: 'resident', label: 'Residente vinculado' }],
+    fields: [{ key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'number', label: 'Número / identificação', required: true }, { key: 'status', label: 'Status', type: 'select', options: ['OCUPADO', 'LIVRE', 'INATIVO', 'RESERVADO'], required: true }, { key: 'owner', label: 'Proprietário vinculado' }, { key: 'resident', label: 'Morador vinculado' }],
   },
   encomendasAdmin: {
     collection: 'packages', title: 'Encomendas', subtitle: 'Consulte as encomendas recebidas no condomínio.', empty: 'Nenhuma encomenda encontrada.',
@@ -60,8 +60,8 @@ export const entityConfigs = {
   },
   visitantesAdmin: {
     collection: 'visitors', title: 'Visitantes', subtitle: 'Consulte o histórico de acessos de visitantes.', empty: 'Nenhum visitante encontrado.',
-    tabs: [['Todos', []], ['Pendentes', ['PENDENTE']], ['Autorizados', ['AUTORIZADO']], ['Presentes', ['ENTROU']], ['Finalizados', ['SAIU', 'RECUSADO']]],
-    columns: [['Visitante', 'name', 'cpf'], ['Unidade', 'unit', 'tower'], ['Morador', 'resident'], ['Data / Horário', 'date', 'time'], ['Status', 'status']], fields: [],
+    tabs: [['Todos', []], ['Pendentes', ['PENDENTE']], ['Autorizados', ['AUTORIZADO']], ['Presentes', ['ENTROU']], ['Finalizados', ['SAIU', 'RECUSADO', 'EXPIRADO']]],
+    columns: [['Visitante', 'name', 'cpf'], ['Unidade', 'unit', 'tower'], ['Morador', 'resident'], ['Início', 'startDate', 'startTime'], ['Término', 'endDate', 'endTime'], ['Status', 'status']], fields: [],
   },
   comunicados: {
     collection: 'notices', title: 'Comunicados', subtitle: 'Crie e gerencie os comunicados enviados aos moradores.', action: 'Novo comunicado', empty: 'Nenhum comunicado encontrado.',

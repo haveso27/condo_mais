@@ -1,13 +1,13 @@
 export const desktopData = {
   moradores: {
-    title: 'Moradores', subtitle: 'Gerencie os moradores cadastrados no condomínio.', action: 'Novo morador', tabs: ['Todos (120)', 'Proprietários (82)', 'Residentes (38)'],
+    title: 'Moradores', subtitle: 'Gerencie os moradores cadastrados no condomínio.', action: 'Novo morador', tabs: ['Todos (120)', 'Proprietários (82)', 'Inquilinos (38)'],
     columns: ['Morador', 'Unidade', 'Vínculo', 'Contato', 'Status'],
     rows: [
-      ['Carlos Silva|CPF: ***.***.***-42', '203 · Torre A', 'Residente', 'carlos@email.com', 'Ativo'],
+      ['Carlos Silva|CPF: ***.***.***-42', '203 · Torre A', 'Proprietário', 'carlos@email.com', 'Ativo'],
       ['Ana Souza|CPF: ***.***.***-18', '305 · Torre B', 'Proprietário', 'ana@email.com', 'Ativo'],
-      ['João Santos|CPF: ***.***.***-71', '108 · Torre A', 'Residente', 'joao@email.com', 'Ativo'],
+      ['João Santos|CPF: ***.***.***-71', '108 · Torre A', 'Inquilino', 'joao@email.com', 'Ativo'],
       ['Mariana Oliveira|CPF: ***.***.***-36', '402 · Torre C', 'Proprietário', 'mariana@email.com', 'Ativo'],
-      ['Ricardo Lima|CPF: ***.***.***-54', '207 · Torre B', 'Residente', 'ricardo@email.com', 'Inativo'],
+      ['Ricardo Lima|CPF: ***.***.***-54', '207 · Torre B', 'Inquilino', 'ricardo@email.com', 'Inativo'],
     ],
   },
   unidades: {
