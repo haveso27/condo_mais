@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Modal from '../../components/Modal'
 import { useAppData } from '../../context/AppDataContext'
 import ResidentLayout from '../../layouts/ResidentLayout'
+import { sameUnit, futureReservations, activeNotices, statusLabel } from '../../services/serviceUtils'
 import { visitorEffectiveStatus } from '../../services/visitantesService'
 
 const dashboardCards = [
@@ -32,11 +33,13 @@ export default function ResidentDashboard() {
   const [visibleCards, setVisibleCards] = useState(() => loadCards(resident.id))
   const [draftCards, setDraftCards] = useState(visibleCards)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const packageCount = data.packages.filter((item) => item.unit === resident.unit && item.status === 'AGUARDANDO_RETIRADA').length
-  const visitorCount = data.visitors.filter((item) => item.unit === resident.unit && ['AUTORIZADO', 'ENTROU'].includes(visitorEffectiveStatus(item))).length
-  const ticketCount = data.tickets.filter((item) => item.unit === resident.unit && !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
-  const noticeCount = data.notices.filter((item) => item.status === 'ATIVO' && (item.destination === 'Todo condomínio' || item.tower === resident.tower)).length
-  const nextReservation = data.reservations.find((item) => item.unit === resident.unit && item.status === 'CONFIRMADA')
+  const packageCount = data.packages.filter((item) => sameUnit(item, resident) && item.status === 'AGUARDANDO_RETIRADA').length
+  const visitorCount = data.visitors.filter((item) => sameUnit(item, resident) && ['AUTORIZADO', 'ENTROU'].includes(visitorEffectiveStatus(item))).length
+  const ticketCount = data.tickets.filter((item) => sameUnit(item, resident) && !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
+  const notices = activeNotices(data.notices, resident)
+  const noticeCount = notices.length
+  const urgentNotice = notices.find((item) => item.priority === 'URGENTE')
+  const nextReservation = futureReservations(data.reservations.filter((item) => sameUnit(item, resident)))[0]
   const cards = [
     { key: 'packages', icon: Package, label: 'Encomendas', value: packageCount, detail: 'aguardando', route: '/morador/comunicados' },
     { key: 'reservations', icon: CalendarDays, label: 'Próxima reserva', value: nextReservation ? `${nextReservation.date.slice(8, 10)}/${nextReservation.date.slice(5, 7)} · ${nextReservation.startTime}` : 'Nenhuma', detail: nextReservation?.area || 'Sem reserva', route: '/morador/reservas' },
@@ -64,7 +67,7 @@ export default function ResidentDashboard() {
       <section className="resident-page resident-page--dashboard">
         <h1>Olá, {resident.name.split(' ')[0]}! <span>👋</span></h1>
         <p className="muted">Apartamento {resident.unit} · {resident.tower}</p>
-        <button className="urgent-alert" onClick={() => navigate('/morador/comunicados/agua')}><AlertTriangle /><span><small>Aviso urgente</small><strong>Interrupção no abastecimento de água na Torre B.</strong><em>Ver detalhes →</em></span></button>
+        {urgentNotice && <button className="urgent-alert" onClick={() => navigate(`/morador/comunicados/${encodeURIComponent(urgentNotice.id)}`)}><AlertTriangle /><span><small>Aviso urgente</small><strong>{urgentNotice.title}</strong><em>Ver detalhes →</em></span></button>}
         <div className="dashboard-summary-heading"><h2>Resumo</h2><button className="text-link" onClick={() => { setDraftCards(visibleCards); setSettingsOpen(true) }}><Settings2 size={15} /> Personalizar</button></div>
         <div className="resident-stats">
           {cards.filter((card) => visibleCards.includes(card.key)).map(({ key, icon: Icon, label, value, detail, route }) => <button key={key} onClick={() => navigate(route)}><Icon /><span><small>{label}</small><strong>{value}</strong><em>{detail}</em></span></button>)}
@@ -73,7 +76,7 @@ export default function ResidentDashboard() {
         <h2>Ações rápidas</h2>
         <div className="quick-actions"><button onClick={() => navigate('/morador/visitantes')}>+ Autorizar visitante</button><button onClick={() => navigate('/morador/reservas')}>+ Fazer reserva</button></div>
         <h2>Últimos avisos</h2>
-        <div className="notice-list"><button onClick={() => navigate('/morador/comunicados')}><i className="dot green" /><span><strong>Manutenção preventiva da piscina</strong><small>Hoje · Normal</small></span><b>›</b></button><button onClick={() => navigate('/morador/comunicados/agua')}><i className="dot red" /><span><strong>Interrupção no abastecimento de água</strong><small>Hoje · Urgente</small></span><b>›</b></button></div>
+        <div className="notice-list">{notices.slice(0, 3).map((notice) => <button key={notice.id} onClick={() => navigate(`/morador/comunicados/${encodeURIComponent(notice.id)}`)}><i className={`dot ${notice.priority === 'URGENTE' ? 'red' : 'green'}`} /><span><strong>{notice.title}</strong><small>{notice.startDate} · {statusLabel(notice.priority)}</small></span><b>›</b></button>)}{!notices.length && <p className="dashboard-empty">Nenhum aviso ativo.</p>}</div>
         <button className="text-link inline-link" onClick={() => navigate('/morador/comunicados')}>Ver todos os avisos →</button>
       </section>
       <Modal open={settingsOpen} title="Personalizar resumo" onClose={() => setSettingsOpen(false)} onConfirm={saveCards} confirmLabel="Salvar preferências">

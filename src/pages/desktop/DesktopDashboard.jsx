@@ -4,10 +4,11 @@ import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
 import DesktopLayout from '../../layouts/DesktopLayout'
+import { futureReservations, statusLabel, todayIso } from '../../services/serviceUtils'
 import { visitorEffectiveStatus } from '../../services/visitantesService'
 
-function Row({ icon: Icon, title, subtitle, meta, tone = 'green', badge }) {
-  return <div className="activity-row"><span className={`row-icon row-icon--${tone}`}><Icon size={19} /></span><span><strong>{title}</strong><small>{subtitle}</small></span><span className="row-meta">{meta}{badge && <StatusBadge tone={tone}>{badge}</StatusBadge>}</span></div>
+function Row({ icon: Icon, title, subtitle, meta, tone = 'green', badge, status }) {
+  return <div className="activity-row"><span className={`row-icon row-icon--${tone}`}><Icon size={19} /></span><span><strong>{title}</strong><small>{subtitle}</small></span><span className="row-meta">{meta}{badge && <StatusBadge status={status} tone={tone}>{badge}</StatusBadge>}</span></div>
 }
 
 export default function DesktopDashboard({ role }) {
@@ -17,7 +18,10 @@ export default function DesktopDashboard({ role }) {
   const pendingPackages = data.packages.filter((item) => item.status === 'AGUARDANDO_RETIRADA').length
   const presentVisitors = data.visitors.filter((item) => item.status === 'ENTROU').length
   const presentProviders = data.providers.filter((item) => item.status === 'ENTROU').length
-  const expectedVisitors = data.visitors.filter((item) => ['PENDENTE', 'AUTORIZADO'].includes(visitorEffectiveStatus(item))).length
+  const today = todayIso()
+  const todaysVisitors = data.visitors.filter((item) => item.startDate <= today && item.endDate >= today).map((item) => ({ ...item, status: visitorEffectiveStatus(item) }))
+  const expectedVisitors = todaysVisitors.filter((item) => ['PENDENTE', 'AUTORIZADO'].includes(item.status)).length
+  const upcoming = futureReservations(data.reservations)
   const activeTickets = data.tickets.filter((item) => !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
   const urgentTickets = data.tickets.filter((item) => ['ALTA', 'URGENTE'].includes(item.priority) && !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
   return (
@@ -34,9 +38,18 @@ export default function DesktopDashboard({ role }) {
         </div>
         {portaria && <><h2 className="eyebrow">Ações rápidas</h2><div className="desktop-actions"><button onClick={() => navigate('/portaria/visitantes')}>+ Registrar visitante</button><button onClick={() => navigate('/portaria/encomendas')}>+ Registrar encomenda</button><button onClick={() => navigate('/portaria/prestadores')}>+ Registrar prestador</button></div></>}
         <div className="dashboard-columns">
-          <article className="panel"><h2>{portaria ? 'Visitantes de hoje' : 'Atividades recentes'}</h2><Row icon={Contact} title={portaria ? 'Mariana Souza' : 'Nova encomenda recebida'} subtitle={portaria ? '203 · Torre A, Responsável: Carlos Silva' : 'Apto 203 · Torre A'} meta={portaria ? '14:30' : '14:32'} badge={portaria ? 'Autorizado' : ''} /><Row icon={Contact} title={portaria ? 'Lucas Oliveira' : 'Nova reserva realizada'} subtitle={portaria ? '305 · Torre B' : 'Salão de Festas · Apto. 305'} meta={portaria ? '16:00' : '13:10'} badge={portaria ? 'Em visita' : ''} /><Row icon={Headphones} title={portaria ? 'Camila Ferreira' : 'Novo chamado aberto'} subtitle={portaria ? '402 · Torre C' : 'Vazamento na garagem'} meta={portaria ? '18:30' : '11:48'} badge={portaria ? 'Autorizado' : ''} /></article>
-          <article className="panel"><h2>{portaria ? 'Encomendas aguardando retirada' : 'Próximas reservas'}</h2><Row icon={portaria ? Archive : CalendarCheck} title={portaria ? 'ENC-1048' : 'Salão de Festas'} subtitle={portaria ? 'Carlos Silva, 203 · Torre A' : 'Hoje 18:00'} meta={portaria ? 'Hoje · 14:32' : ''} badge={portaria ? 'Aguardando retirada' : ''} tone={portaria ? 'pink' : 'green'} /><Row icon={portaria ? Archive : CalendarCheck} title={portaria ? 'ENC-1047' : 'Churrasqueira'} subtitle={portaria ? 'Ana Souza, 305 · Torre B' : 'Amanhã 12:00'} meta={portaria ? 'Hoje · 12:18' : ''} badge={portaria ? 'Aguardando retirada' : ''} tone={portaria ? 'pink' : 'green'} /></article>
-          <article className="panel"><h2>{portaria ? 'Prestadores presentes' : 'Chamados em aberto'}</h2><Row icon={portaria ? Contact : Headphones} title={portaria ? 'José Almeida' : 'Vazamento na garagem'} subtitle={portaria ? 'Eletricista, 305 · Torre B' : '#CH-0028'} meta={portaria ? 'Entrada · 09:15' : ''} badge={portaria ? 'Presente' : 'Urgente'} tone={portaria ? 'green' : 'red'} /><Row icon={portaria ? Contact : Headphones} title={portaria ? 'Marcos Santos' : 'Portão com problema'} subtitle={portaria ? 'Manutenção hidráulica, Área comum' : '#CH-0026'} meta={portaria ? 'Entrada · 10:40' : ''} badge={portaria ? 'Presente' : 'Alta'} tone={portaria ? 'green' : 'red'} /></article>
+          <article className="panel"><h2>{portaria ? 'Visitantes de hoje' : 'Atividades recentes'}</h2>{portaria
+            ? todaysVisitors.slice(0, 3).map((item) => <Row key={item.id} icon={Contact} title={item.name} subtitle={`${item.unit} · ${item.tower}, Responsável: ${item.resident}`} meta={item.startTime} status={item.status} badge={statusLabel(item.status)} tone={['RECUSADO', 'EXPIRADO'].includes(item.status) ? 'red' : 'green'} />)
+            : data.history.slice(0, 3).map((item) => <Row key={item.id} icon={Contact} title={item.type} subtitle={item.reference} meta={`${item.date} · ${item.time}`} />)}
+            {(portaria ? !todaysVisitors.length : !data.history.length) && <p className="dashboard-empty">Nenhuma atividade encontrada.</p>}</article>
+          <article className="panel"><h2>{portaria ? 'Encomendas aguardando retirada' : 'Próximas reservas'}</h2>{portaria
+            ? data.packages.filter((item) => item.status === 'AGUARDANDO_RETIRADA').slice(0, 3).map((item) => <Row key={item.id} icon={Archive} title={item.id} subtitle={`${item.resident}, ${item.unit} · ${item.tower}`} meta={item.receivedAt} status={item.status} badge={statusLabel(item.status)} tone="pink" />)
+            : upcoming.slice(0, 3).map((item) => <Row key={item.id} icon={CalendarCheck} title={item.area} subtitle={`${item.resident} · ${item.unit} · ${item.tower}`} meta={`${item.date} · ${item.startTime}`} status={item.status} badge={statusLabel(item.status)} />)}
+            {(portaria ? !pendingPackages : !upcoming.length) && <p className="dashboard-empty">{portaria ? 'Nenhuma encomenda aguardando retirada.' : 'Nenhuma reserva futura.'}</p>}</article>
+          <article className="panel"><h2>{portaria ? 'Prestadores presentes' : 'Chamados em aberto'}</h2>{portaria
+            ? data.providers.filter((item) => item.status === 'ENTROU').slice(0, 3).map((item) => <Row key={item.id} icon={Contact} title={item.name} subtitle={`${item.service}, ${item.location} · ${item.tower}`} meta={item.entryAt} status={item.status} badge={statusLabel(item.status)} />)
+            : data.tickets.filter((item) => !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).slice(0, 3).map((item) => <Row key={item.id} icon={Headphones} title={item.title} subtitle={item.id} meta={statusLabel(item.status)} status={item.priority} badge={statusLabel(item.priority)} tone={['ALTA', 'URGENTE'].includes(item.priority) ? 'red' : 'green'} />)}
+            {(portaria ? !presentProviders : !activeTickets) && <p className="dashboard-empty">Nenhum registro no momento.</p>}</article>
         </div>
       </section>
     </DesktopLayout>

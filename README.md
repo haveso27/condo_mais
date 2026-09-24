@@ -1,184 +1,99 @@
 # Condo+
 
-Front-end de um sistema de gestão condominial com experiências específicas para **Morador**, **Portaria** e **Administração**.
-
-O projeto está em fase de protótipo funcional. Todos os fluxos rodam no navegador com dados simulados; ainda não há autenticação real, API ou banco de dados.
+Front-end de gestão condominial com ambientes para Morador, Portaria e Administração.
 
 ## Tecnologias
 
-- React
-- React Router
-- Vite
-- JavaScript
-- CSS
-- Lucide React
-- pnpm
+React, React DOM, React Router, Lucide React, JavaScript, CSS e Vite com plugin React.
 
-## Como executar localmente
+## Requisitos
 
-### Pré-requisitos
+- Node.js 22.13.0 ou superior (validado com 24.21.0).
+- pnpm 11.19.0 e Git.
+- Confira a instalação com `node --version` e `pnpm --version`.
 
-- Node.js 20 ou superior
-- pnpm
+As versões das dependências estão fixadas em package.json e pnpm-lock.yaml.
 
-### Instalação
+## Instalação
 
-```bash
+```sh
 git clone https://github.com/haveso27/condo_mais.git
 cd condo_mais
-pnpm install
-pnpm dev
+pnpm install --frozen-lockfile
 ```
 
-Abra o endereço informado pelo Vite, normalmente `http://localhost:5173`.
+Se necessário, instale o gerenciador com `npm install --global pnpm@11.19.0`. Não gere lockfiles de outros gerenciadores.
 
-No Windows, depois de instalar as dependências, também é possível executar o arquivo `Abrir Condo+.cmd`.
+## Executando o projeto
 
-### Outros comandos
+```sh
+pnpm dev --host 127.0.0.1
+```
 
-```bash
-# Gerar a versão de produção
+Abra o endereço impresso no terminal, normalmente http://127.0.0.1:5173. Ctrl+C encerra o servidor. Se a porta estiver ocupada, o Vite poderá selecionar outra; para escolher explicitamente, acrescente `--port 5174`.
+
+## Build
+
+```sh
 pnpm build
-
-# Visualizar a versão de produção localmente
-pnpm preview
+pnpm preview --host 127.0.0.1 --port 4173
 ```
 
-## Acessos de demonstração
+O build gera dist/, que não deve ser editado ou versionado. Execute build novamente após alterar o código antes de usar preview. Para hospedagem estática, configure fallback das rotas para index.html.
 
-Na tela inicial, use os botões de acesso rápido ou os dados abaixo:
+## Testes
 
-| Perfil | CPF | Senha |
-| --- | --- | --- |
-| Morador | `111.111.111-11` | `condo123` |
-| Portaria | `222.222.222-22` | `condo123` |
-| Administração | `333.333.333-33` | `condo123` |
+```sh
+pnpm test
+git diff --check
+```
 
-> Esses dados são apenas demonstrativos. A tela de login não valida credenciais em um servidor.
+A suíte usa node:test e renderização React com Vite, sem framework adicional. Verificações de foco, layout e navegação devem ser complementadas no navegador.
 
-## Módulos disponíveis
+## Acessos de desenvolvimento
 
-### Morador
+Enquanto a autenticação com o backend não estiver integrada, o projeto utiliza contas fictícias locais para acessar os perfis.
 
-- Dashboard e comunicados
-- Cadastro e acompanhamento de visitantes
-- Reservas de áreas comuns e consulta de disponibilidade
-- Abertura e acompanhamento de chamados
-- Aprovação de reservas vinculadas à unidade do proprietário
-- Consulta de perfil e dados da unidade
+| Ambiente | E-mail | Senha |
+|---|---|---|
+| Administrador | admin@condomais.local | CondoDev123! |
+| Portaria | portaria@condomais.local | CondoDev123! |
+| Morador | morador@condomais.local | CondoDev123! |
 
-### Portaria
+Essas credenciais existem exclusivamente no ambiente mock e deverão ser removidas quando a autenticação real for integrada. São públicas e fictícias, não segredos. A fonte única é src/mocks/mockUsers.js.
 
-- Controle de visitantes
-- Entrada e saída de prestadores
-- Registro e retirada de encomendas
-- Avisos
-- Chamados e ocorrências
-- Histórico de operações
+O login rejeita credenciais incorretas, mas isso **não é segurança nem autorização**: as rotas ainda podem ser acessadas diretamente. Primeiro acesso e recuperação são demonstrativos, não alteram essas contas nem enviam e-mail.
 
-### Administração
-
-- Cadastro de moradores e unidades
-- Consulta de encomendas e visitantes
-- Gestão de reservas, comunicados e chamados
-- Configurações do condomínio
-
-## Rotas principais
-
-| Área | Rota inicial | Rotas complementares |
-| --- | --- | --- |
-| Autenticação | `/` | `/primeiro-acesso`, `/recuperar-senha` |
-| Morador | `/morador` | `/morador/comunicados`, `/morador/visitantes`, `/morador/reservas`, `/morador/chamados`, `/morador/aprovacoes`, `/morador/perfil` |
-| Portaria | `/portaria` | `/portaria/visitantes`, `/portaria/prestadores`, `/portaria/encomendas`, `/portaria/avisos`, `/portaria/chamados`, `/portaria/historico` |
-| Administração | `/admin` | `/admin/moradores`, `/admin/unidades`, `/admin/encomendas`, `/admin/reservas`, `/admin/visitantes`, `/admin/comunicados`, `/admin/chamados`, `/admin/configuracoes` |
-
-## Estrutura do projeto
+## Estrutura
 
 ```text
+public/             Logos, imagem de login e imagem de compartilhamento
 src/
-├── components/   # Componentes reutilizáveis, formulários e modais
-├── config/       # Configuração de tabelas, filtros e entidades
-├── context/      # Estado compartilhado da aplicação
-├── layouts/      # Estruturas visuais por perfil
-├── mocks/        # Dados simulados
-├── pages/        # Telas de autenticação, morador, portaria e admin
-├── services/     # Regras de consulta e manipulação dos dados
-└── styles/       # Estilos globais e responsividade
+  components/       Componentes compartilhados
+  config/           Configurações de entidades, catálogos e apresentação
+  context/          AppDataContext: estado e ações em memória
+  layouts/          Layouts por ambiente
+  mocks/            Dados operacionais e contas fictícias locais
+  pages/            Telas de acesso, Morador, Portaria e Administração
+  services/         Adapters síncronos e regras locais
+  styles/           CSS global e responsividade
+tests/              Regras de negócio, regressão, apresentação e login
+docs/
+  INTEGRACAO-BACKEND.md
 ```
 
-## Estado e dados simulados
+## Estado atual
 
-O estado compartilhado está em `src/context/AppDataContext.jsx`. Os registros iniciais ficam em `src/mocks/appData.js`.
+- Front-end implementado, com experiências distintas para Morador e operação.
+- Dados operacionais em src/mocks/appData.js; modificações ficam no Context e são descartadas ao recarregar.
+- Apenas preferências dos cards do Morador usam localStorage; não há sessão autenticada.
+- Autenticação demonstrativa, sem API, banco ou autorização reais.
+- Morador é perfil de acesso; Proprietário/Inquilino são vínculos com unidade.
+- Perfil do Morador é consulta. Notificações/perfil operacionais são demonstrativos.
+- Backend e Banco de Dados serão integrados. Não utilizar dados reais ou tratar o projeto como sistema de produção.
 
-As alterações feitas pela interface existem somente durante a sessão atual. Ao atualizar a página, os dados retornam ao estado inicial.
+## Integração com Backend
 
-Os arquivos em `src/services/` isolam as regras de cada domínio:
+Leia [INTEGRACAO-BACKEND.md](docs/INTEGRACAO-BACKEND.md) para arquitetura atual, entidades, enums, datas, contratos pendentes e estratégia incremental.
 
-- visitantes
-- reservas
-- encomendas
-- prestadores
-- avisos
-- chamados
-- moradores e unidades
-
-Essa camada foi criada para facilitar a troca gradual dos mocks por chamadas HTTP.
-
-## Orientação para integração com o backend
-
-Uma estratégia recomendada é manter a assinatura pública dos serviços e substituir internamente o acesso aos arrays por um cliente HTTP.
-
-Recursos esperados na API:
-
-| Recurso | Operações necessárias |
-| --- | --- |
-| Autenticação | login, primeiro acesso, recuperação e renovação de sessão |
-| Moradores | listar, cadastrar, editar, ativar e desativar |
-| Unidades | listar, cadastrar, editar e gerenciar vínculos |
-| Visitantes | listar, cadastrar, autorizar, recusar, registrar entrada e saída |
-| Prestadores | listar, cadastrar, registrar entrada e saída |
-| Encomendas | listar, registrar recebimento, retirada e devolução |
-| Reservas | listar, verificar disponibilidade, criar, aprovar, recusar e cancelar |
-| Comunicados | listar, publicar, editar e encerrar |
-| Chamados | listar, criar, comentar, priorizar e alterar status |
-| Histórico | listar operações com filtros de data, usuário e tipo |
-| Notificações | listar, marcar como lida e emitir eventos para os perfis envolvidos |
-
-### Pontos importantes
-
-- Definir autenticação e autorização por perfil no backend; as rotas ainda não são protegidas.
-- Vincular moradores, proprietários e unidades por identificadores, não por textos exibidos na interface.
-- Padronizar os status usados no front-end antes de fechar os contratos da API.
-- Retornar datas em ISO 8601 e definir o tratamento do fuso horário no servidor.
-- Implementar paginação, busca e filtros no servidor para grandes volumes.
-- Preservar as atualizações entre módulos: por exemplo, uma encomenda registrada pela portaria deve gerar notificação para o morador.
-
-## Fluxo de colaboração
-
-Antes de começar uma alteração:
-
-```bash
-git checkout main
-git pull origin main
-git checkout -b feature/nome-da-alteracao
-```
-
-Depois de desenvolver e testar:
-
-```bash
-git add .
-git commit -m "Descrição objetiva da alteração"
-git push -u origin feature/nome-da-alteracao
-```
-
-Abra um Pull Request para revisão antes de integrar a alteração à `main`.
-
-## Situação atual
-
-- Front-end responsivo e compilando
-- Fluxos principais funcionais com mocks
-- Sem backend ou banco de dados
-- Sem persistência após recarregar a página
-- Sem testes automatizados
-- Preparado para integração progressiva com uma API
-
+Os services atuais retornam arrays/objetos de forma síncrona. A integração exigirá await, estados de carregamento/erro e reconciliação de respostas. Os mocks não devem ser importados literalmente para o banco nem usados como contrato definitivo.

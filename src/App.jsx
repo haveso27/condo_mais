@@ -18,7 +18,7 @@ export default function App() {
       <Route path="/recuperar-senha/nova-senha" element={<AuthFlowPage step="recovery3" />} />
       <Route path="/morador" element={<ResidentDashboard />} />
       <Route path="/morador/comunicados" element={<CommunicationsPage />} />
-      <Route path="/morador/comunicados/agua" element={<CommunicationDetail />} />
+      <Route path="/morador/comunicados/:id" element={<CommunicationDetail />} />
       <Route path="/morador/mais" element={<MorePage />} />
       <Route path="/morador/reservas" element={<ResidentListPage type="reservas" />} />
       <Route path="/morador/visitantes" element={<ResidentListPage type="visitantes" />} />

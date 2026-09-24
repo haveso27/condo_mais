@@ -3,3 +3,17 @@ dist/
 tmp/
 Telas do Figma/
 *.log
+.cache/
+.pnpm-store/
+.vite/
+coverage/
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+.openai/

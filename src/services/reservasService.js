@@ -1,12 +1,12 @@
-import { matchesQuery, nextId, updateById } from './serviceUtils'
+import { matchesQuery, nextId, updateById } from './serviceUtils.js'
 
 function overlaps(startA, endA, startB, endB) {
   return startA < endB && endA > startB
 }
 
 export const reservasService = {
-  listar(records, { query = '', statuses = [], unit = '', area = '' } = {}) {
-    return records.filter((item) => matchesQuery(item, query) && (!statuses.length || statuses.includes(item.status)) && (!unit || item.unit === unit) && (!area || item.area === area))
+  listar(records, { query = '', statuses = [], unit = '', tower = '', area = '' } = {}) {
+    return records.filter((item) => matchesQuery(item, query) && (!statuses.length || statuses.includes(item.status)) && (!tower || item.tower === tower) && (!unit || item.unit === unit) && (!area || item.area === area))
   },
   verificarDisponibilidade(records, candidate) {
     if (!candidate.area || !candidate.date || !candidate.startTime || !candidate.endTime) return { available: false, message: 'Preencha área, data e horários.' }

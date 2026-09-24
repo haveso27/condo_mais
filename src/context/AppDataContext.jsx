@@ -7,12 +7,13 @@ import { encomendasService } from '../services/encomendasService'
 import { prestadoresService } from '../services/prestadoresService'
 import { reservasService } from '../services/reservasService'
 import { nowLabel, todayIso } from '../services/serviceUtils'
-import { visitantesService } from '../services/visitantesService'
+import { visitantesService, visitorEntryError } from '../services/visitantesService'
 
 const AppDataContext = createContext(null)
 
 function historyEntry(type, reference, unit, user = 'João Oliveira') {
-  return { id: `HIS-${Date.now()}-${Math.random()}`, date: todayIso(), time: nowLabel().split(' · ')[1], type, reference, unit, user }
+  const now = new Date()
+  return { id: `HIS-${now.getTime()}-${Math.random()}`, timestamp: now.toISOString(), date: todayIso(now), time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), type, reference, unit, user }
 }
 
 export function AppDataProvider({ children }) {
@@ -30,6 +31,7 @@ export function AppDataProvider({ children }) {
     setVisitorStatus(id, status) {
       setData((current) => {
         const item = current.visitors.find((visitor) => visitor.id === id)
+        if (status === 'ENTROU' && visitorEntryError(item)) return current
         return { ...current, visitors: visitantesService.alterarStatus(current.visitors, id, status), history: [historyEntry(`Visitante ${status.toLowerCase()}`, item?.name || id, `${item?.unit || ''} · ${item?.tower || ''}`), ...current.history] }
       })
     },
@@ -43,14 +45,14 @@ export function AppDataProvider({ children }) {
       setData((current) => {
         const resident = current.residents.find((item) => item.tower === payload.tower && item.unit === payload.unit)?.name || 'Morador não identificado'
         const result = encomendasService.criar(current.packages, payload, resident)
-        const notification = { id: `NOT-${Date.now()}`, unit: payload.unit, title: 'Nova encomenda recebida', text: `A encomenda ${result.record.id} está aguardando retirada.`, createdAt: result.record.receivedAt, read: false }
+        const notification = { id: `NOT-${Date.now()}`, tower: payload.tower, unit: payload.unit, title: 'Nova encomenda recebida', text: `A encomenda ${result.record.id} está aguardando retirada.`, createdAt: result.record.receivedAt, read: false }
         return { ...current, packages: result.records, notifications: [notification, ...current.notifications], history: [historyEntry('Encomenda registrada', `${result.record.id} · ${resident}`, `${payload.unit} · ${payload.tower}`), ...current.history] }
       })
     },
     setPackageStatus(id, status) {
       setData((current) => { const item = current.packages.find((entry) => entry.id === id); return { ...current, packages: encomendasService.alterarStatus(current.packages, id, status), history: [historyEntry(`Encomenda ${status.toLowerCase()}`, id, `${item?.unit || ''} · ${item?.tower || ''}`), ...current.history] } })
     },
-    addReservation(payload) { setData((current) => { const result = reservasService.criar(current.reservations, payload, current.currentResident); return { ...current, reservations: result.records } }) },
+    addReservation(payload) { setData((current) => { if (!current.condominium.allowResidentBookings) return current; const result = reservasService.criar(current.reservations, payload, current.currentResident); return { ...current, reservations: result.records } }) },
     setReservationStatus(id, status) { setData((current) => ({ ...current, reservations: reservasService.alterarStatus(current.reservations, id, status), notifications: [{ id: `NOT-${Date.now()}`, unit: current.reservations.find((item) => item.id === id)?.unit, title: `Reserva ${status === 'CONFIRMADA' ? 'aprovada' : status.toLowerCase()}`, text: `A reserva ${id} foi atualizada.`, createdAt: nowLabel(), read: false }, ...current.notifications] })) },
     addNotice(payload) { setData((current) => { const result = avisosService.criar(current.notices, payload); return { ...current, notices: result.records } }) },
     updateNotice(id, patch) { setData((current) => ({ ...current, notices: avisosService.atualizar(current.notices, id, patch) })) },

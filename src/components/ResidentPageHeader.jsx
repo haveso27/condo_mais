@@ -1,10 +1,9 @@
 import { ArrowLeft } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 export default function ResidentPageHeader({ title, subtitle, action, onAction, backTo = '/morador' }) {
   const navigate = useNavigate()
-  const location = useLocation()
-  const goBack = () => location.key === 'default' ? navigate(backTo) : navigate(-1)
+  const goBack = () => navigate(backTo)
   return (
     <>
       <button className="back-button" onClick={goBack}><ArrowLeft size={15} /> Voltar</button>

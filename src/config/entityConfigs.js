@@ -1,5 +1,4 @@
-const towers = ['Torre A', 'Torre B', 'Torre C', 'Área comum']
-const priorities = ['BAIXA', 'NORMAL', 'ALTA', 'URGENTE']
+import { towers, priorities } from './catalogs'
 
 export const entityConfigs = {
   visitantesPortaria: {

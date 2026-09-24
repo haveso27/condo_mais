@@ -1,3 +1,4 @@
+import { commonAreas } from '../config/catalogs.js'
 export const initialAppData = {
   currentResident: { id: 'MOR-001', name: 'Carlos Silva', cpf: '***.***.***-42', email: 'carlos@email.com', phone: '(81) 99999-9999', tower: 'Torre A', unit: '203', relation: 'PROPRIETARIO', isOwner: true },
   residents: [
@@ -42,7 +43,7 @@ export const initialAppData = {
     { id: 'RES-304', area: 'Quadra', resident: 'João Santos', tower: 'Torre A', unit: '108', date: '2026-09-20', startTime: '19:00', endTime: '20:00', notes: '', status: 'CONCLUIDA' },
     { id: 'RES-305', area: 'Academia', resident: 'Ricardo Lima', tower: 'Torre B', unit: '207', date: '2026-09-10', startTime: '07:00', endTime: '08:00', notes: '', status: 'CANCELADA' },
   ],
-  commonAreas: ['Salão de Festas', 'Churrasqueira', 'Quadra', 'Academia'],
+  commonAreas,
   notices: [
     { id: 'AVI-401', title: 'Interrupção no abastecimento de água', content: 'O abastecimento da Torre B será interrompido temporariamente.', priority: 'URGENTE', destination: 'Todo condomínio', tower: '', startDate: '2026-09-08', endDate: '2026-09-09', status: 'ATIVO' },
     { id: 'AVI-402', title: 'Manutenção preventiva da piscina', content: 'A piscina ficará indisponível durante a manutenção.', priority: 'NORMAL', destination: 'Todo condomínio', tower: '', startDate: '2026-09-08', endDate: '2026-09-10', status: 'ATIVO' },
