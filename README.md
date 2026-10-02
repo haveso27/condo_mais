@@ -123,4 +123,5 @@ Com a API ligada:
 - **Administração → Unidades** (com cadastro de torres) e **Administração → Moradores** usam a API para listar, criar, editar, excluir unidades e ativar/desativar moradores;
 - a identidade de quem entrou (nome, unidade, vínculo) e o nome do condomínio vêm de `GET /usuarios/me`;
 - **nenhum dado de demonstração aparece com a API ligada**: módulos ainda não integrados (comunicados, encomendas, visitantes, prestadores, reservas, chamados, histórico) começam vazios. Registros criados neles ficam só na memória do navegador até serem integrados;
-- morador cadastrado pela Administração entra sem senha e a cria no primeiro acesso, com o CPF.
+- morador cadastrado pela Administração entra sem senha e a cria no primeiro acesso, com o CPF;
+- na área do Morador aparece o **assistente virtual** (botão flutuante): ele responde perguntas como “Tem alguma encomenda para mim?” consultando, pela API (`POST /assistente/mensagens`), só os dados do morador logado. Ele precisa de `ANTHROPIC_API_KEY` configurada no backend; sem ela, o chat informa que está indisponível. No modo mock o botão não aparece.

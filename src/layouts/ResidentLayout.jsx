@@ -1,6 +1,8 @@
 import { Bell, CircleUserRound, Home, Menu, MessageSquareText } from 'lucide-react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import AssistantChat from '../components/AssistantChat'
 import Brand from '../components/Brand'
+import { apiEnabled } from '../services/api.js'
 
 const links = [
   { to: '/morador', label: 'Início', icon: Home },
@@ -22,6 +24,7 @@ export default function ResidentLayout({ children }) {
         <div className="resident-header__actions"><button aria-label="Ver comunicados" onClick={() => navigate('/morador/comunicados')}><Bell size={20} /></button><button aria-label="Abrir meu perfil" onClick={() => navigate('/morador/perfil')}><CircleUserRound size={22} /></button></div>
       </header>
       <main>{children}</main>
+      {apiEnabled() && <AssistantChat />}
       <nav className="resident-nav" aria-label="Navegação principal">{links.map(({ to, label, icon: Icon }) => <Link to={to} key={to} className={isCurrent(to) ? 'active' : ''} aria-current={isCurrent(to) ? 'page' : undefined}><Icon size={20} /><span>{label}</span></Link>)}</nav>
     </div>
   )
