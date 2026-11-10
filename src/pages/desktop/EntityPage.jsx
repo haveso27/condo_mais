@@ -15,7 +15,7 @@ import { chamadosService } from '../../services/chamadosService'
 import { encomendasService } from '../../services/encomendasService'
 import { prestadoresService } from '../../services/prestadoresService'
 import { reservasService } from '../../services/reservasService'
-import { basicValidation, noticePeriodError, unitDuplicate, unitEditPatch, matchesQuery, statusLabel, todayIso } from '../../services/serviceUtils'
+import { basicValidation, noticePeriodError, unitDuplicate, unitEditPatch, unitStatusField, matchesQuery, statusLabel, todayIso } from '../../services/serviceUtils'
 import { visitantesService, visitorEntryError } from '../../services/visitantesService'
 import { findPackageUnit } from '../../services/encomendasApi'
 import { TICKET_COMMON_AREA, ticketUnitLabel } from '../../services/chamadosApi'
@@ -112,8 +112,10 @@ function EntityModule({ role, type }) {
         return field
       })
     : config.fields
-  // Área comum: a aprovação só aparece para área que pode ser reservada
-  const fields = areasPage && !form.bookable ? baseFields.filter((field) => field.key !== 'requiresApproval') : baseFields
+  // Área comum: a aprovação só aparece para área que pode ser reservada.
+  // Unidade: OCUPADO vem dos moradores; a ocupada só mostra esse status e as demais não podem escolhê-lo.
+  const fields = (areasPage && !form.bookable ? baseFields.filter((field) => field.key !== 'requiresApproval') : baseFields)
+    .map((field) => config.collection === 'units' && field.key === 'status' ? unitStatusField(field, editing) : field)
 
   useEffect(() => { setComment('') }, [details?.id])
 
