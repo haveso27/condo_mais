@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { initialAppData } from '../src/mocks/appData.js'
-import { activeNotices, basicValidation, futureReservations, noticePeriodError, sameUnit, statusLabel, todayIso, unitDuplicate, unitEditPatch } from '../src/services/serviceUtils.js'
+import { activeNotices, basicValidation, futureReservations, noticePeriodError, sameUnit, statusLabel, todayIso, unitDuplicate, unitEditPatch, unitStatusField } from '../src/services/serviceUtils.js'
 import { visitorEffectiveStatus, visitorEntryError, visitantesService } from '../src/services/visitantesService.js'
 import { reservasService } from '../src/services/reservasService.js'
 import { chamadosService } from '../src/services/chamadosService.js'
@@ -112,6 +112,19 @@ test('Regressão: reserva inválida/conflitante bloqueada, adjacente aceita e ca
   assert.equal(reservasService.verificarDisponibilidade([existing], { ...existing, id: undefined, startTime: '11:00', endTime: '12:00' }).available, true)
   const cancelled = reservasService.alterarStatus([existing], existing.id, 'CANCELADA')
   assert.equal(reservasService.verificarDisponibilidade(cancelled, { ...existing, id: undefined }).available, true)
+})
+test('reserva noturna no modo mock: conflita com a madrugada do dia seguinte', () => {
+  const night = { id: 'RES-N', area: 'Salão', date: '2026-10-10', endDate: '2026-10-11', startTime: '22:00', endTime: '02:00', status: 'CONFIRMADA' }
+  assert.equal(reservasService.verificarDisponibilidade([night], { area: 'Salão', date: '2026-10-11', startTime: '01:00', endTime: '03:00' }).available, false)
+  assert.equal(reservasService.verificarDisponibilidade([night], { area: 'Salão', date: '2026-10-11', startTime: '02:00', endTime: '03:00' }).available, true)
+  assert.equal(reservasService.verificarDisponibilidade([], { ...night, id: undefined }).available, true)
+})
+test('status da unidade: ocupada só fica OCUPADO; as demais não escolhem OCUPADO', () => {
+  const field = { key: 'status', label: 'Status', type: 'select', options: ['OCUPADO', 'LIVRE', 'INATIVO', 'RESERVADO'] }
+  assert.deepEqual(unitStatusField(field, { status: 'OCUPADO' }).options, ['OCUPADO'])
+  assert.match(unitStatusField(field, { status: 'OCUPADO' }).label, /moradores/)
+  assert.deepEqual(unitStatusField(field, { status: 'LIVRE' }).options, ['LIVRE', 'INATIVO', 'RESERVADO'])
+  assert.deepEqual(unitStatusField(field, null).options, ['LIVRE', 'INATIVO', 'RESERVADO'])
 })
 test('Regressão: proprietário/inquilino e separação de prestadores', () => {
   assert.equal(visitantesService.podeAutorizar(data.residents, data.currentResident), true)

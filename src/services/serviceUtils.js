@@ -68,3 +68,11 @@ export function unitEditPatch(original, form) {
   const replaceFirst = (items = [], value) => [...new Set([...(value?.trim() ? [value.trim()] : []), ...items.slice(1)])]
   return { ...rest, owners: replaceFirst(original.owners, owner), residents: replaceFirst(original.residents, resident) }
 }
+
+// Status da unidade no formulário: OCUPADO e LIVRE seguem os moradores (o backend recusa o contrário).
+// A unidade ocupada só pode continuar OCUPADO; as demais escolhem entre LIVRE, INATIVO e RESERVADO.
+export function unitStatusField(field, editing) {
+  return editing?.status === 'OCUPADO'
+    ? { ...field, label: 'Status (definido pelos moradores)', options: ['OCUPADO'] }
+    : { ...field, options: field.options.filter((option) => option !== 'OCUPADO') }
+}

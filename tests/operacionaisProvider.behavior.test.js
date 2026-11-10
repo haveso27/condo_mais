@@ -65,7 +65,7 @@ function fakeApi({ packages = [], packagesStatus = 200, me = { id: 'u-1', nome: 
   globalThis.fetch = async (url, init = {}) => {
     const path = new URL(url).pathname
     const method = init.method || 'GET'
-    calls.push({ method, path, body: init.body ? JSON.parse(init.body) : undefined })
+    calls.push({ method, path, query: Object.fromEntries(new URL(url).searchParams), body: init.body ? JSON.parse(init.body) : undefined })
     const reply = (status, body) => ({ ok: status < 400, status, json: async () => body, text: async () => (body === undefined ? '' : JSON.stringify(body)) })
     if (path === '/usuarios/me') return reply(200, me)
     if (path === '/portaria/visitas' && method === 'GET') return reply(200, visitList)
@@ -221,12 +221,16 @@ test('tela de reservas do morador: só áreas reserváveis, agenda real e pedido
   assert.ok(calls.some((call) => call.path === '/interativo/reservas/ocupacao'))
   assert.ok(view.getByText(/fica pendente até o proprietário/))
 
+  // Passar da meia-noite pede a data final; com ela, a agenda dos dois dias é consultada
   fireEvent.change(view.getByLabelText(/Horário inicial/), { target: { value: '22:00' } })
-  fireEvent.change(view.getByLabelText(/Horário final/), { target: { value: '23:30' } })
+  fireEvent.change(view.getByLabelText(/Horário final/), { target: { value: '01:00' } })
+  assert.ok(await view.findByText(/informe a data final/))
+  fireEvent.change(view.getByLabelText(/Termina no dia/), { target: { value: '2099-12-21' } })
   assert.ok(await view.findByText('Horário disponível.'))
+  assert.ok(calls.some((call) => call.path === '/interativo/reservas/ocupacao' && call.query.data === '2099-12-21'))
   fireEvent.click(view.getAllByRole('button', { name: /Nova reserva/ }).at(-1))
   await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/interativo/reservas')))
-  assert.deepEqual(calls.find((call) => call.method === 'POST' && call.path === '/interativo/reservas').body, { areaId: 'ar-salao', dataReserva: '2099-12-20', horarioInicio: '22:00', horarioFim: '23:30' })
+  assert.deepEqual(calls.find((call) => call.method === 'POST' && call.path === '/interativo/reservas').body, { areaId: 'ar-salao', dataReserva: '2099-12-20', horarioInicio: '22:00', horarioFim: '01:00', dataFim: '2099-12-21' })
   assert.ok(await view.findByText('Reserva solicitada. Ela fica pendente até ser aprovada.'))
 })
 

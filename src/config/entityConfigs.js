@@ -51,7 +51,7 @@ export const entityConfigs = {
     collection: 'units', title: 'Unidades', subtitle: 'Gerencie as unidades do condomínio.', action: 'Nova unidade', empty: 'Nenhuma unidade encontrada.',
     tabs: [['Todas', []], ['Ocupadas', ['OCUPADO']], ['Livres', ['LIVRE']], ['Inativas', ['INATIVO']], ['Reservadas', ['RESERVADO']]],
     columns: [['Unidade', 'number'], ['Torre / Bloco', 'tower'], ['Proprietários', 'owners'], ['Moradores', 'residents'], ['Status', 'status']],
-    fields: [{ key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'number', label: 'Número / identificação', required: true }, { key: 'status', label: 'Status', type: 'select', options: ['OCUPADO', 'LIVRE', 'INATIVO', 'RESERVADO'], required: true }, { key: 'owner', label: 'Proprietário vinculado' }, { key: 'resident', label: 'Morador vinculado' }],
+    fields: [{ key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'number', label: 'Número / identificação', required: true }, { key: 'status', label: 'Status', type: 'select', options: ['LIVRE', 'INATIVO', 'RESERVADO'], required: true }, { key: 'owner', label: 'Proprietário vinculado' }, { key: 'resident', label: 'Morador vinculado' }],
   },
   encomendasAdmin: {
     collection: 'packages', title: 'Encomendas', subtitle: 'Consulte as encomendas recebidas no condomínio.', empty: 'Nenhuma encomenda encontrada.',
@@ -61,7 +61,7 @@ export const entityConfigs = {
   reservas: {
     collection: 'reservations', title: 'Reservas', subtitle: 'Consulte e gerencie excepcionalmente as reservas.', empty: 'Nenhuma reserva encontrada.',
     tabs: [['Todas', []], ['Pendentes', ['AGUARDANDO_APROVACAO']], ['Confirmadas', ['CONFIRMADA']], ['Concluídas', ['CONCLUIDA']], ['Canceladas', ['CANCELADA', 'RECUSADA']]],
-    columns: [['Área', 'area'], ['Morador', 'resident'], ['Unidade', 'unit', 'tower'], ['Data', 'date'], ['Horário', 'startTime', 'endTime'], ['Status', 'status']], fields: [],
+    columns: [['Área', 'area'], ['Morador', 'resident'], ['Unidade', 'unit', 'tower'], ['Data', 'date', 'endDate'], ['Horário', 'startTime', 'endTime'], ['Status', 'status']], fields: [],
   },
   visitantesAdmin: {
     collection: 'visitors', title: 'Visitantes', subtitle: 'Consulte o histórico de acessos de visitantes.', empty: 'Nenhum visitante encontrado.',

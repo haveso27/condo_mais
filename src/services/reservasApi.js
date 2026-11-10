@@ -1,12 +1,32 @@
 import { ApiError, apiGet, apiPost, apiPut } from './api.js'
 
 const hhmm = (value) => String(value || '').slice(0, 5)
+const MAX_HOURS = 24
 
-// Reserva confirmada cujo horário já passou aparece como CONCLUIDA (o backend não grava esse estado)
+// Reserva confirmada cujo horário já passou aparece como CONCLUIDA (o backend não grava esse estado).
+// date é o dia em que a reserva termina (o seguinte, quando passa da meia-noite).
 export function reservationEffectiveStatus(status, date, endTime, now = new Date()) {
   if (status !== 'CONFIRMADA' || !date || !endTime) return status
   const end = new Date(`${date}T${hhmm(endTime)}:00`)
   return !Number.isNaN(end.getTime()) && end < now ? 'CONCLUIDA' : status
+}
+
+// Período completo de uma reserva ou de um pedido. Sem data final, termina no mesmo dia.
+// Strings AAAA-MM-DDTHH:MM comparam na ordem certa sem converter para Date.
+export function reservationPeriod({ date, endDate, startTime, endTime }) {
+  return { start: `${date}T${hhmm(startTime)}`, end: `${endDate || date}T${hhmm(endTime)}` }
+}
+
+// Valida o pedido como o backend: fim depois do início e no máximo 24 horas
+export function reservationPeriodError(candidate) {
+  const { start, end } = reservationPeriod(candidate)
+  if (start >= end) {
+    return candidate.endDate && candidate.endDate !== candidate.date
+      ? 'O fim da reserva deve ser depois do início.'
+      : 'O horário final deve ser posterior ao inicial. Para passar da meia-noite, informe a data final (dia seguinte).'
+  }
+  const hours = (new Date(`${end}:00`) - new Date(`${start}:00`)) / 3_600_000
+  return hours > MAX_HOURS ? 'Uma reserva pode durar no máximo 24 horas.' : ''
 }
 
 // ReservaResponseDTO -> reserva das telas. O status vem com espaço ("AGUARDANDO APROVACAO").
@@ -20,10 +40,12 @@ export function toReservation(reserva, now = new Date()) {
     tower: reserva.torreNome || '',
     unit: reserva.apartamentoNumero || '',
     date: reserva.dataReserva || '',
+    // Só preenchida quando a reserva termina em outro dia (passa da meia-noite)
+    endDate: reserva.dataFim && reserva.dataFim !== reserva.dataReserva ? reserva.dataFim : '',
     startTime: hhmm(reserva.horarioInicio),
     endTime: hhmm(reserva.horarioFim),
     approvedBy: reserva.aprovadorNome || '',
-    status: reservationEffectiveStatus(status, reserva.dataReserva, reserva.horarioFim, now),
+    status: reservationEffectiveStatus(status, reserva.dataFim || reserva.dataReserva, reserva.horarioFim, now),
   }
 }
 
@@ -58,23 +80,46 @@ export function bookableAreas(areas = []) {
   return areas.filter((area) => area.active && area.bookable)
 }
 
-// Horários ocupados de uma área num dia, sem dados de quem reservou
+// Horários ocupados de uma área num dia, sem dados de quem reservou. Inclui a reserva que começou na
+// véspera e passa da meia-noite; cada horário traz as datas de início e fim.
 export async function carregarOcupacao(areaId, date, options) {
   const horarios = await apiGet('/interativo/reservas/ocupacao', { areaId, data: date }, options)
-  return (horarios || []).map((horario) => ({ startTime: hhmm(horario.horarioInicio), endTime: hhmm(horario.horarioFim), status: horario.status }))
+  return (horarios || []).map((horario) => ({
+    date: horario.dataReserva || date,
+    endDate: horario.dataFim || horario.dataReserva || date,
+    startTime: hhmm(horario.horarioInicio),
+    endTime: hhmm(horario.horarioFim),
+    status: horario.status,
+  }))
+}
+
+// Agenda dos dias que o pedido toca: o do início e, se passar da meia-noite, o seguinte (sem repetir horários)
+export async function carregarOcupacaoDoPeriodo(areaId, date, endDate, options) {
+  const days = endDate && endDate !== date ? [date, endDate] : [date]
+  const slots = (await Promise.all(days.map((day) => carregarOcupacao(areaId, day, options)))).flat()
+  const seen = new Set()
+  return slots.filter((slot) => {
+    const key = `${slot.date}T${slot.startTime}|${slot.endDate}T${slot.endTime}`
+    return seen.has(key) ? false : seen.add(key)
+  })
 }
 
 export function availabilityFromOccupation(occupied, candidate) {
-  if (!candidate.startTime || !candidate.endTime) return { available: false, message: 'Preencha área, data e horários.' }
-  if (candidate.startTime >= candidate.endTime) return { available: false, message: 'O horário final deve ser posterior ao inicial.' }
-  const conflict = occupied.some((slot) => candidate.startTime < slot.endTime && candidate.endTime > slot.startTime)
+  if (!candidate.date || !candidate.startTime || !candidate.endTime) return { available: false, message: 'Preencha área, data e horários.' }
+  const periodError = reservationPeriodError(candidate)
+  if (periodError) return { available: false, message: periodError }
+  const wanted = reservationPeriod(candidate)
+  const conflict = occupied.some((slot) => {
+    const taken = reservationPeriod({ ...slot, date: slot.date || candidate.date })
+    return wanted.start < taken.end && wanted.end > taken.start
+  })
   return conflict ? { available: false, message: 'Este horário já está ocupado.' } : { available: true, message: 'Horário disponível.' }
 }
 
 export async function solicitarReserva(form, areas, options) {
   const area = areas.find((item) => item.name === form.area)
   if (!area) throw new ApiError(400, 'Selecione uma área comum disponível.')
-  return apiPost('/interativo/reservas', { areaId: area.id, dataReserva: form.date, horarioInicio: form.startTime, horarioFim: form.endTime }, options)
+  return apiPost('/interativo/reservas', { areaId: area.id, dataReserva: form.date, horarioInicio: form.startTime, horarioFim: form.endTime, dataFim: form.endDate || form.date }, options)
 }
 
 const statusRoutes = { CANCELADA: 'cancelar', CONFIRMADA: 'aprovar', RECUSADA: 'recusar' }
