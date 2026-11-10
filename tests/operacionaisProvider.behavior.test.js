@@ -273,6 +273,14 @@ test('tela de chamados do admin: histórico no detalhe, recategorização, statu
   fireEvent.change(view.getByPlaceholderText('Descreva a atualização'), { target: { value: 'Técnico chamado' } })
   fireEvent.click(view.getByRole('button', { name: 'Adicionar comentário' }))
   await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/atendimento/chamados/c-1/comentarios' && call.body.comentario === 'Técnico chamado')))
+
+  // Resolver abre o campo opcional da solução, que vai como comentário; depois só resta encerrar
+  fireEvent.click(view.getAllByRole('button', { name: 'Resolvido' }).at(-1))
+  fireEvent.change(view.getByLabelText(/Solução aplicada/), { target: { value: 'Registro trocado' } })
+  fireEvent.click(view.getAllByRole('button', { name: 'Alterar para Resolvido' }).at(-1))
+  await waitFor(() => assert.ok(calls.some((call) => call.method === 'PUT' && call.body?.status === 'RESOLVIDO' && call.body.comentario === 'Registro trocado')))
+  const statusButtons = () => [...view.container.ownerDocument.querySelectorAll('.ticket-actions button')].map((button) => button.textContent)
+  await waitFor(() => assert.deepEqual(statusButtons(), ['Encerrado']))
   assert.ok(await view.findByText('Técnico chamado', { exact: false }))
 })
 

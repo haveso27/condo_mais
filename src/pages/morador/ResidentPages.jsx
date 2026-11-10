@@ -120,7 +120,7 @@ function ResidentListModule({ type }) {
   const records = useMemo(() => {
     if (type === 'visitantes') return visitantesService.listar(data.visitors, { unit: data.currentResident.unit, tower: data.currentResident.tower, statuses })
     if (type === 'reservas' || type === 'aprovacoes') return reservasService.listar(data.reservations, { unit: data.currentResident.unit, tower: data.currentResident.tower, statuses })
-    // Na API o servidor já entrega só os chamados do morador e da unidade dele (inclusive de área comum)
+    // Na API o servidor já entrega só os chamados que o morador abriu (ocorrências privadas)
     return data.tickets.filter((item) => (remoteTickets || sameUnit(item, data.currentResident)) && (!statuses.length || statuses.includes(item.status)))
   }, [data, statuses, type, remoteTickets])
   const remoteAvailability = () => {
