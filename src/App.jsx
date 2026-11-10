@@ -44,7 +44,6 @@ export default function App() {
         <Route path="/portaria/prestadores" element={<EntityPage role="portaria" type="prestadores" />} />
         <Route path="/portaria/encomendas" element={<EntityPage role="portaria" type="encomendasPortaria" />} />
         <Route path="/portaria/avisos" element={<EntityPage role="portaria" type="avisos" />} />
-        <Route path="/portaria/chamados" element={<EntityPage role="portaria" type="chamadosPortaria" />} />
         <Route path="/portaria/historico" element={<EntityPage role="portaria" type="historico" />} />
       </Route>
       <Route element={<SessionAccessGate area={SESSION_AREA.ADMIN} />}>

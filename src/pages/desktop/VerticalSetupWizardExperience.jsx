@@ -1,10 +1,15 @@
 import { cloneElement, useEffect, useReducer, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Check, ChevronLeft, ChevronRight, CircleAlert, Plus, Trash2 } from 'lucide-react'
+import { Building2, Check, ChevronLeft, ChevronRight, CircleAlert, Copy, Plus, Trash2 } from 'lucide-react'
 import SetupLayout from '../../layouts/SetupLayout'
 import BuildingPreview from '../../components/BuildingPreview'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import NumberStepper from '../../components/NumberStepper'
 import {
+  MAX_TOWERS,
   PREDEFINED_COMMON_AREAS,
+  SETUP_LIMITS,
+  suggestTowerName,
   SETUP_STEPS,
   buildSetupPayload,
   createInitialWizardState,
@@ -58,28 +63,71 @@ function ModelStep() {
   </div>
 }
 
-function TowerCard({ tower, index, canRemove, dispatch, errors }) {
+const COMMON_UNITS_PER_FLOOR = ['1', '2', '3', '4', '5', '6', '8', '10', '12']
+const FLOOR_OPTIONS = Array.from({ length: 20 }, (_, index) => String(index + 1))
+const SEPARATOR_OPTIONS = [['', 'Sem separador'], ['-', 'Hífen ( - )'], ['.', 'Ponto ( . )'], ['/', 'Barra ( / )']]
+
+// Lista com as quantidades comuns e a opção "Personalizado", que mostra o controle numérico.
+// Um valor fora da lista (incomum, mas legítimo) nunca é recusado: vira personalizado.
+function UnitsPerFloorControl({ value, onChange, ...fieldProps }) {
+  const [custom, setCustom] = useState(false)
+  const isCustom = custom || !COMMON_UNITS_PER_FLOOR.includes(String(value))
+  return <div className="setup-stack">
+    <select {...fieldProps} value={isCustom ? 'custom' : String(value)} onChange={(event) => {
+      if (event.target.value === 'custom') setCustom(true)
+      else { setCustom(false); onChange(event.target.value) }
+    }}>
+      {COMMON_UNITS_PER_FLOOR.map((option) => <option key={option} value={option}>{option} {option === '1' ? 'apartamento' : 'apartamentos'}</option>)}
+      <option value="custom">Personalizado…</option>
+    </select>
+    {isCustom && <NumberStepper id={`${fieldProps.id}-custom`} aria-label="Apartamentos por andar (personalizado)" label="apartamentos por andar" min={1} max={SETUP_LIMITS.unitsPerFloor} value={value} onChange={onChange} />}
+  </div>
+}
+
+function TowerCard({ tower, index, suggestion, canRemove, canDuplicate, dispatch, errors, onRemove }) {
   const update = (field) => (event) => dispatch({ type: 'UPDATE_TOWER', id: tower.id, field, value: event.target.value })
+  const set = (field) => (value) => dispatch({ type: 'UPDATE_TOWER', id: tower.id, field, value })
   const key = (field) => `tower.${tower.id}.${field}`
   const id = (field) => `setup-${tower.id}-${field}`
   const preview = getTowerUnitPreview(tower)
+  const floorChoices = FLOOR_OPTIONS.includes(String(tower.firstFloor)) ? FLOOR_OPTIONS : [...FLOOR_OPTIONS, String(tower.firstFloor)]
+  const separatorChoices = SEPARATOR_OPTIONS.some(([value]) => value === tower.separator) ? SEPARATOR_OPTIONS : [...SEPARATOR_OPTIONS, [tower.separator, tower.separator]]
+  const displayName = tower.name.trim() || `Torre ${index + 1}`
   return <article className="setup-tower-card">
-    <header><div><span>Torre {index + 1}</span><h3>{tower.name.trim() || 'Nova torre'}</h3></div>{canRemove && <button className="setup-icon-button" type="button" aria-label={`Remover ${tower.name || `Torre ${index + 1}`}`} onClick={() => dispatch({ type: 'REMOVE_TOWER', id: tower.id })}><Trash2 size={18} /></button>}</header>
+    <header><div><span>Torre {index + 1}</span><h3>{tower.name.trim() || 'Nova torre'}</h3></div><div className="setup-tower-actions">{canDuplicate && <button className="setup-icon-button setup-icon-button--neutral" type="button" aria-label={`Duplicar ${displayName}`} title="Duplicar torre: copia a configuração" onClick={() => dispatch({ type: 'DUPLICATE_TOWER', id: tower.id })}><Copy size={18} /></button>}{canRemove && <button className="setup-icon-button" type="button" aria-label={`Remover ${displayName}`} onClick={() => onRemove(tower)}><Trash2 size={18} /></button>}</div></header>
     <div className="setup-form-grid setup-form-grid--tower">
-      <Field label="Nome da torre" id={id('name')} fieldKey={key('name')} error={findError(errors, key('name'))}><input value={tower.name} onChange={update('name')} placeholder="Ex.: Torre A" /></Field>
-      <Field label="Quantidade de andares" id={id('floorCount')} fieldKey={key('floorCount')} error={findError(errors, key('floorCount'))}><input type="number" min="1" max="100" value={tower.floorCount} onChange={update('floorCount')} /></Field>
-      <Field label="Apartamentos por andar" id={id('unitsPerFloor')} fieldKey={key('unitsPerFloor')} error={findError(errors, key('unitsPerFloor'))}><input type="number" min="1" max="100" value={tower.unitsPerFloor} onChange={update('unitsPerFloor')} /></Field>
-      <Field label="Primeiro andar" id={id('firstFloor')} fieldKey={key('firstFloor')} error={findError(errors, key('firstFloor'))}><input type="number" min="1" max="999" value={tower.firstFloor} onChange={update('firstFloor')} /></Field>
-      <Field label="Primeiro apartamento do andar" id={id('firstUnit')} fieldKey={key('firstUnit')} error={findError(errors, key('firstUnit'))} hint="Use 1 para iniciar em 01, 02, 03…"><input type="number" min="1" max="999" value={tower.firstUnit} onChange={update('firstUnit')} /></Field>
+      <Field label="Nome da torre" id={id('name')} fieldKey={key('name')} error={findError(errors, key('name'))} hint="Sugestão automática; você pode editar."><input value={tower.name} onChange={update('name')} placeholder={`Ex.: ${suggestion}`} /></Field>
+      <Field label="Quantidade de andares" id={id('floorCount')} fieldKey={key('floorCount')} error={findError(errors, key('floorCount'))}><NumberStepper label="andares" min={1} max={SETUP_LIMITS.floorCount} value={tower.floorCount} onChange={set('floorCount')} /></Field>
+      <Field label="Apartamentos por andar" id={id('unitsPerFloor')} fieldKey={key('unitsPerFloor')} error={findError(errors, key('unitsPerFloor'))}><UnitsPerFloorControl value={tower.unitsPerFloor} onChange={set('unitsPerFloor')} /></Field>
+      <Field label="Primeiro andar" id={id('firstFloor')} fieldKey={key('firstFloor')} error={findError(errors, key('firstFloor'))}><select value={tower.firstFloor} onChange={update('firstFloor')}>{floorChoices.map((floor) => <option key={floor} value={floor}>{floor}º andar</option>)}</select></Field>
+      <Field label="Primeiro apartamento do andar" id={id('firstUnit')} fieldKey={key('firstUnit')} error={findError(errors, key('firstUnit'))} hint="Sugestão: 1, para iniciar em 01, 02, 03…"><NumberStepper label="primeiro apartamento" min={1} max={SETUP_LIMITS.firstUnit} value={tower.firstUnit} onChange={set('firstUnit')} /></Field>
       <Field label="Quantidade de dígitos do apartamento" id={id('unitDigits')} fieldKey={key('unitDigits')} error={findError(errors, key('unitDigits'))} hint="2 dígitos geram 01; 3 dígitos geram 001."><select value={tower.unitDigits} onChange={update('unitDigits')}><option value="1">1 dígito</option><option value="2">2 dígitos</option><option value="3">3 dígitos</option><option value="4">4 dígitos</option></select></Field>
-      <Field label="Separador entre andar e apartamento" id={id('separator')} fieldKey={key('separator')} hint="Opcional. Com hífen, por exemplo, o resultado será 1-01."><input value={tower.separator} maxLength="3" onChange={update('separator')} placeholder="Sem separador" /></Field>
+      <Field label="Separador entre andar e apartamento" id={id('separator')} fieldKey={key('separator')} hint="Com hífen, por exemplo, o resultado será 1-01."><select value={tower.separator} onChange={update('separator')}>{separatorChoices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
     </div>
     <p className="setup-pattern">Exemplo da numeração: <strong>{preview.first || '—'}</strong> até <strong>{preview.last || '—'}</strong> · {preview.total} unidades</p>
   </article>
 }
 
+// Descartar torres nunca é silencioso: remover uma ou reduzir a quantidade pede confirmação
 function TowersStep({ towers, dispatch, errors }) {
-  return <div className="setup-stack">{towers.map((tower, index) => <TowerCard key={tower.id} tower={tower} index={index} canRemove={towers.length > 1} dispatch={dispatch} errors={errors} />)}<button type="button" className="setup-add-button" onClick={() => dispatch({ type: 'ADD_TOWER' })}><Plus size={18} /> Adicionar outra torre</button></div>
+  const [pending, setPending] = useState(null)
+  const removing = pending?.type === 'count' ? towers.slice(pending.count) : pending?.tower ? [pending.tower] : []
+  const confirmRemoval = () => {
+    if (pending.type === 'count') dispatch({ type: 'SET_TOWER_COUNT', count: pending.count })
+    else dispatch({ type: 'REMOVE_TOWER', id: pending.tower.id })
+    setPending(null)
+  }
+  const changeCount = (value) => {
+    const count = Math.min(MAX_TOWERS, Math.max(1, Number.parseInt(value, 10) || 1))
+    if (count < towers.length) setPending({ type: 'count', count })
+    else dispatch({ type: 'SET_TOWER_COUNT', count })
+  }
+  return <div className="setup-stack">
+    <div className="setup-field setup-towers-count"><label htmlFor="setup-tower-count">Quantidade de torres</label><NumberStepper id="setup-tower-count" label="torres" min={1} max={MAX_TOWERS} value={String(towers.length)} onChange={changeCount} /></div>
+    {towers.map((tower, index) => <TowerCard key={tower.id} tower={tower} index={index} suggestion={suggestTowerName(towers)} canRemove={towers.length > 1} canDuplicate={towers.length < MAX_TOWERS} dispatch={dispatch} errors={errors} onRemove={(item) => setPending({ type: 'remove', tower: item })} />)}
+    <button type="button" className="setup-add-button" onClick={() => dispatch({ type: 'ADD_TOWER' })} disabled={towers.length >= MAX_TOWERS}><Plus size={18} /> Adicionar outra torre</button>
+    <ConfirmDialog open={Boolean(pending)} title="Descartar torres?" message={`Os dados de ${removing.map((tower) => tower.name.trim() || 'torre sem nome').join(', ')} serão descartados. Nada foi gravado ainda, mas será preciso preencher novamente se você mudar de ideia.`} destructive confirmLabel="Descartar" onCancel={() => setPending(null)} onConfirm={confirmRemoval} />
+  </div>
 }
 
 export function UnitsStep({ towers }) {
@@ -119,7 +167,7 @@ function SummaryStep({ draft, totalUnits, submitting, submitError, onSubmit, onE
   const areas = [...draft.commonAreas, ...draft.customAreas.map((area) => area.name)]
   return <div className="setup-summary"><div className="setup-review-notice"><CircleAlert size={20} /><p><strong>Confira antes de concluir.</strong> Ao concluir, o condomínio é criado com estas torres, unidades e áreas comuns, e a configuração inicial não pode ser refeita por aqui.</p></div>
     <section><SectionHeading onEdit={() => onEdit(0)} label="dados do condomínio">Condomínio</SectionHeading><dl><div><dt>Nome</dt><dd>{draft.condominium.name}</dd></div><div><dt>Endereço</dt><dd>{draft.condominium.address}</dd></div><div><dt>Cidade/UF</dt><dd>{draft.condominium.city} — {draft.condominium.state}</dd></div><div><dt>Modelo</dt><dd>Condomínio Vertical</dd></div></dl></section>
-    <section><SectionHeading onEdit={() => onEdit(2)} label="torres e unidades">Estrutura residencial</SectionHeading><div className="setup-summary-towers">{draft.towers.map((tower) => <div key={tower.id}><strong>{tower.name}</strong><span>{tower.floorCount} andares</span><span>{tower.unitsPerFloor} unidades por andar</span><span>{getTowerUnitCount(tower)} unidades geradas</span></div>)}</div><p className="setup-summary-total"><strong>{totalUnits}</strong> unidades no total</p></section>
+    <section><SectionHeading onEdit={() => onEdit(2)} label="torres e unidades">Estrutura residencial</SectionHeading><div className="setup-summary-towers">{draft.towers.map((tower) => <div key={tower.id}><strong>{tower.name}</strong><span>{tower.floorCount} andares</span><span>{tower.unitsPerFloor} unidades por andar</span><span>{getTowerUnitCount(tower)} unidades geradas</span><span>Numeração: {getTowerUnitPreview(tower).first} … {getTowerUnitPreview(tower).last}</span></div>)}</div><p className="setup-summary-total"><strong>{draft.towers.length}</strong> {draft.towers.length === 1 ? 'torre' : 'torres'} · <strong>{totalUnits}</strong> unidades no total</p></section>
     <section><SectionHeading onEdit={() => onEdit(4)} label="áreas comuns">Áreas comuns</SectionHeading>{areas.length ? <div className="setup-summary-tags">{areas.map((area) => <span key={area}>{area}</span>)}</div> : <p className="muted">Nenhuma área comum selecionada.</p>}</section>
     {submitError && <div className="setup-errors" role="alert"><CircleAlert size={20} /><div><strong>Não foi possível concluir a configuração.</strong><p>{submitError}</p></div></div>}
     <button type="button" className="desktop-primary setup-review-button" onClick={onSubmit} disabled={submitting} aria-busy={submitting ? 'true' : undefined}>{submitting ? 'Salvando configuração…' : <><Check size={18} /> Concluir configuração</>}</button>
