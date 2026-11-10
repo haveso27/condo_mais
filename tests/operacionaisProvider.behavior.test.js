@@ -342,6 +342,23 @@ test('tela de visitantes da portaria: registra pela unidade, autoriza, dá entra
   }
 })
 
+test('tela de visitantes do admin: só consulta, sem registrar, autorizar nem dar entrada', async () => {
+  fakeApi({ visits: [visita('v-1', 'PENDENTE'), visita('v-2', 'AUTORIZADO')] })
+  sessionStorage.setItem('condoplus.token', jwt({ perfil: 'ADMIN', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 }))
+  const { fireEvent } = await import('@testing-library/react')
+  const { MemoryRouter } = await import('react-router-dom')
+  const { default: EntityPage } = await server.ssrLoadModule('/src/pages/desktop/EntityPage.jsx')
+  const view = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(EntityPage, { role: 'admin', type: 'visitantesAdmin' }))))
+
+  assert.equal((await view.findAllByText('Mariana Souza')).length, 2)
+  assert.equal(view.queryByRole('button', { name: /Registrar visitante/ }), null)
+  for (const details of view.getAllByRole('button', { name: 'Ver detalhes' })) {
+    fireEvent.click(details)
+    for (const name of ['Autorizar', 'Recusar', 'Registrar entrada', 'Revogar autorização']) assert.equal(view.queryByRole('button', { name }), null)
+    fireEvent.click(view.getAllByRole('button', { name: /Fechar/ })[0])
+  }
+})
+
 test('tela de visitantes do morador: autoriza visitante e decide a pendente da unidade', async () => {
   const calls = fakeApi({ me: morador, visits: [visita('v-1', 'PENDENTE')] })
   sessionStorage.setItem('condoplus.token', jwt({ perfil: 'MORADOR', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 }))

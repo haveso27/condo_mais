@@ -336,6 +336,8 @@ function EntityModule({ role, type }) {
 
   function detailActions(record) {
     if (config.collection === 'visitors') {
+      // A administração só consulta a portaria (CONDO-12); o backend também recusa as operações dela
+      if (role !== 'portaria') return null
       // Na API, uma autorização ainda não usada também pode ser revogada (recusada)
       const buttons = record.status === 'PENDENTE' ? [['Autorizar', 'AUTORIZADO'], ['Recusar', 'RECUSADO']] : record.status === 'AUTORIZADO' ? [['Registrar entrada', 'ENTROU'], ...(remoteVisitors ? [['Revogar autorização', 'RECUSADO']] : [])] : record.status === 'ENTROU' ? [['Registrar saída', 'SAIU']] : []
       return buttons.map(([label, status]) => <button key={status} className={status === 'RECUSADO' ? 'danger-button' : 'primary-button'} onClick={() => requestAction('visitor', record, label, status)}>{label}</button>)
