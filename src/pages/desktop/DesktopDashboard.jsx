@@ -23,7 +23,6 @@ export default function DesktopDashboard({ role }) {
   const expectedVisitors = todaysVisitors.filter((item) => ['PENDENTE', 'AUTORIZADO'].includes(item.status)).length
   const upcoming = futureReservations(data.reservations)
   const activeTickets = data.tickets.filter((item) => !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
-  const urgentTickets = data.tickets.filter((item) => ['ALTA', 'URGENTE'].includes(item.priority) && !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
   return (
     <DesktopLayout role={role}>
       <section className="dashboard-page">
@@ -31,7 +30,7 @@ export default function DesktopDashboard({ role }) {
         <p>Confira {portaria ? 'as atividades da portaria hoje' : 'o que está acontecendo no condomínio hoje'}.</p>
         <div className={`stat-grid${portaria ? ' stat-grid--portaria' : ''}`}>
           {(portaria ? [
-            [CalendarCheck, 'Visitantes previstos', String(expectedVisitors), 'para hoje', 'violet'], [UsersRound, 'Visitantes presentes', String(presentVisitors), 'no condomínio', 'green'], [Archive, 'Encomendas', String(pendingPackages), 'aguardando retirada', 'pink'], [Contact, 'Prestadores presentes', String(presentProviders), 'no condomínio', 'green'], [Headphones, 'Chamados urgentes', String(urgentTickets), 'aguardando atenção', 'red', () => navigate('/portaria/chamados')],
+            [CalendarCheck, 'Visitantes previstos', String(expectedVisitors), 'para hoje', 'violet'], [UsersRound, 'Visitantes presentes', String(presentVisitors), 'no condomínio', 'green'], [Archive, 'Encomendas', String(pendingPackages), 'aguardando retirada', 'pink'], [Contact, 'Prestadores presentes', String(presentProviders), 'no condomínio', 'green'],
           ] : [
             [Building2, 'Unidades', String(data.units.length), `${data.units.filter((item) => item.status === 'OCUPADO').length} ocupadas`, 'violet'], [Package, 'Encomendas', String(pendingPackages), 'aguardando retirada', 'pink'], [CalendarCheck, 'Reservas', String(data.reservations.filter((item) => item.status === 'CONFIRMADA').length), 'confirmadas', 'green'], [Headphones, 'Chamados', String(activeTickets), 'em aberto', 'red'],
           ]).map(([icon, label, value, detail, tone, onClick]) => <StatCard key={label} icon={icon} label={label} value={value} detail={detail} tone={tone} onClick={onClick} />)}

@@ -10,7 +10,7 @@ const adminLinks = [
   ['Visão geral', '/admin', CircleGauge], ['Moradores', '/admin/moradores', UsersRound], ['Equipe', '/admin/equipe', UserCog], ['Unidades', '/admin/unidades', Building], ['Encomendas', '/admin/encomendas', Package], ['Reservas', '/admin/reservas', CalendarCheck], ['Áreas comuns', '/admin/areas-comuns', Trees], ['Visitantes', '/admin/visitantes', Contact], ['Comunicados', '/admin/comunicados', Megaphone], ['Chamados', '/admin/chamados', Headphones],
 ]
 const portariaLinks = [
-  ['Visão geral', '/portaria', CircleGauge], ['Visitantes', '/portaria/visitantes', UsersRound], ['Prestadores', '/portaria/prestadores', ClipboardClock], ['Encomendas', '/portaria/encomendas', Archive], ['Avisos', '/portaria/avisos', Megaphone], ['Chamados', '/portaria/chamados', Headphones], ['Histórico', '/portaria/historico', History],
+  ['Visão geral', '/portaria', CircleGauge], ['Visitantes', '/portaria/visitantes', UsersRound], ['Prestadores', '/portaria/prestadores', ClipboardClock], ['Encomendas', '/portaria/encomendas', Archive], ['Avisos', '/portaria/avisos', Megaphone], ['Histórico', '/portaria/historico', History],
 ]
 
 export default function DesktopLayout({ role, children }) {

@@ -31,6 +31,21 @@ export function createTower(id = 'tower-1') {
   }
 }
 
+export const MAX_TOWERS = 30
+
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+// Nome sugerido para a próxima torre: continua o padrão já usado (Torre A, B, C… ou Torre 1, 2, 3…)
+// e nunca repete um nome existente. A pessoa pode editar a sugestão.
+export function suggestTowerName(towers = []) {
+  const used = new Set(towers.map((tower) => String(tower.name || '').trim().toLocaleLowerCase('pt-BR')))
+  const names = towers.map((tower) => String(tower.name || '').trim())
+  const numeric = names.some((name) => /^torre\s+\d+$/i.test(name)) && !names.some((name) => /^torre\s+[a-z]$/i.test(name))
+  const numbers = Array.from({ length: MAX_TOWERS + towers.length }, (_, index) => `Torre ${index + 1}`)
+  const candidates = numeric ? numbers : [...[...LETTERS].map((letter) => `Torre ${letter}`), ...numbers]
+  return candidates.find((name) => !used.has(name.toLocaleLowerCase('pt-BR'))) || ''
+}
+
 export function createInitialSetupDraft() {
   return {
     condominium: { name: '', address: '', city: '', state: '' },
@@ -316,7 +331,26 @@ export function wizardReducer(state, action) {
       return { ...state, draft: { ...state.draft, condominium: { ...state.draft.condominium, [action.field]: action.value } } }
     case 'ADD_TOWER': {
       const nextId = state.nextTowerId + 1
-      return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers: [...state.draft.towers, createTower(`tower-${nextId}`)] } }
+      return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers: [...state.draft.towers, { ...createTower(`tower-${nextId}`), name: suggestTowerName(state.draft.towers) }] } }
+    }
+    case 'DUPLICATE_TOWER': {
+      const index = state.draft.towers.findIndex((tower) => tower.id === action.id)
+      if (index < 0 || state.draft.towers.length >= MAX_TOWERS) return state
+      const nextId = state.nextTowerId + 1
+      // Só a configuração é copiada: a nova torre recebe identidade e nome próprios
+      const copy = { ...state.draft.towers[index], id: `tower-${nextId}`, name: suggestTowerName(state.draft.towers) }
+      const towers = [...state.draft.towers, copy]
+      return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers } }
+    }
+    case 'SET_TOWER_COUNT': {
+      const count = Math.min(MAX_TOWERS, Math.max(1, strictInteger(action.count) || 1))
+      let towers = state.draft.towers.slice(0, count)
+      let nextId = state.nextTowerId
+      while (towers.length < count) {
+        nextId += 1
+        towers = [...towers, { ...createTower(`tower-${nextId}`), name: suggestTowerName(towers) }]
+      }
+      return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers } }
     }
     case 'UPDATE_TOWER':
       return { ...state, draft: { ...state.draft, towers: state.draft.towers.map((tower) => tower.id === action.id ? { ...tower, [action.field]: action.value } : tower) } }
@@ -340,5 +374,7 @@ export function wizardReducer(state, action) {
 }
 
 export function createInitialWizardState() {
-  return { step: 0, maxVisited: 0, nextTowerId: 1, reviewed: false, draft: createInitialSetupDraft() }
+  const draft = createInitialSetupDraft()
+  draft.towers = [{ ...draft.towers[0], name: suggestTowerName([]) }]
+  return { step: 0, maxVisited: 0, nextTowerId: 1, reviewed: false, draft }
 }

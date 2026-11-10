@@ -132,7 +132,7 @@ button { cursor: pointer; }
 .dashboard-page > h1 { color: #157533; margin: 0 0 8px; font-size: 31px; }
 .dashboard-page > p { margin: 0 0 30px; color: var(--muted); font-size: 17px; }
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
-.stat-grid--portaria { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.stat-grid--portaria { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .stat-card { position: relative; min-height: 180px; background: white; border: 1px solid var(--border); border-radius: 6px; padding: 24px; display: flex; flex-direction: column; box-shadow: 0 2px 6px #0b2a5308; }
 .stat-card--action { width: 100%; font: inherit; text-align: left; cursor: pointer; }
 .stat-card--action:hover { border-color: #d7a6ac; box-shadow: 0 4px 12px #0b2a5312; }
@@ -631,3 +631,23 @@ button:disabled { cursor: not-allowed; opacity: .65; }
   .building-preview__hint { white-space: normal; text-align: center; width: calc(100% - 32px); justify-content: center; }
   .building-total p strong { font-size: 34px; }
 }
+
+/* Componentes de formulário que reduzem digitação (CONDO-15) */
+.number-stepper { display: flex; align-items: stretch; width: 100%; min-width: 0; }
+.number-stepper input { flex: 1 1 auto; min-width: 0; text-align: center; border-radius: 0 !important; border-inline: 0 !important; -moz-appearance: textfield; appearance: textfield; }
+.number-stepper input::-webkit-outer-spin-button, .number-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.number-stepper button { flex: 0 0 44px; min-height: 44px; display: grid; place-items: center; border: 1px solid #cfd5d2; background: #f4f7f3; color: var(--green-dark); cursor: pointer; }
+.number-stepper button:first-child { border-radius: 5px 0 0 5px; }
+.number-stepper button:last-child { border-radius: 0 5px 5px 0; }
+.number-stepper button:hover:not(:disabled) { background: #e6f1e4; }
+.number-stepper button:disabled { color: #aab3ae; cursor: not-allowed; }
+.number-stepper button:focus-visible, .number-stepper input:focus-visible { outline: 3px solid #08783b30; outline-offset: 0; position: relative; }
+.setup-field .number-stepper input, .form-grid .number-stepper input { height: 44px; }
+.setup-suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 12px; color: var(--muted); }
+.setup-suggestion button { border: 1px solid #cfd5d2; border-radius: 999px; background: #fff; padding: 3px 10px; font-size: 12px; color: var(--green-dark); cursor: pointer; }
+.setup-icon-button--neutral { background: #eef4ec; color: var(--green-dark); }
+.setup-tower-actions { display: flex; gap: 8px; }
+.setup-towers-count { max-width: 320px; }
+.setup-warning { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 6px; background: #fff7df; color: #6b4a0a; font-size: 13px; }
+.setup-warning button { margin-left: auto; }
+.form-note--warning { background: #fff7df; color: #6b4a0a; }

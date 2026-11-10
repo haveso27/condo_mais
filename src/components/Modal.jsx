@@ -41,9 +41,9 @@ export default function Modal({ open, title, children, onClose, onConfirm, confi
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={() => closeRef.current()}>
       <section ref={dialogRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy || undefined} onMouseDown={(event) => event.stopPropagation()}>
-        <header><h2 id={titleId}>{title}</h2><button aria-label="Fechar" disabled={busy} onClick={() => closeRef.current()}><X size={20} /></button></header>
+        <header><h2 id={titleId}>{title}</h2><button type="button" aria-label="Fechar" disabled={busy} onClick={() => closeRef.current()}><X size={20} /></button></header>
         <div className="modal__body">{children}</div>
-        <footer>{onConfirm ? <><button className="secondary-button" disabled={busy} onClick={() => closeRef.current()}>Cancelar</button><button className={intent === 'danger' ? 'danger-button' : 'primary-button'} disabled={busy} onClick={() => { if (!busy) onConfirm() }}>{confirmLabel}</button></> : <button className="secondary-button" disabled={busy} onClick={() => closeRef.current()}>Fechar</button>}</footer>
+        <footer>{onConfirm ? <><button type="button" className="secondary-button" disabled={busy} onClick={() => closeRef.current()}>Cancelar</button><button type="button" className={intent === 'danger' ? 'danger-button' : 'primary-button'} disabled={busy} onClick={() => { if (!busy) onConfirm() }}>{confirmLabel}</button></> : <button type="button" className="secondary-button" disabled={busy} onClick={() => closeRef.current()}>Fechar</button>}</footer>
       </section>
     </div>
   )

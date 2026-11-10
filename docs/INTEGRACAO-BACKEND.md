@@ -244,3 +244,16 @@ Com a API, o primeiro acesso cria a senha de verdade. No modo mock, ele e a recu
 O build gera uma aplicação estática em dist. Um servidor de hospedagem deve servir os assets e encaminhar rotas da aplicação para index.html, pois a navegação usa BrowserRouter. pnpm dev e pnpm preview já atendem o desenvolvimento local; não constituem backend.
 
 Os metadados de compartilhamento usam /og.png. Ao definir a hospedagem definitiva, configurar uma URL pública absoluta da imagem para os consumidores que a exigem. Nenhum provedor ou domínio é obrigatório para executar o projeto.
+
+## Documentação funcional V2.0: o que depende do backend
+
+Já feito só no frontend: componentes `NumberStepper`, `SearchableSelect` e `TimeSelect` (tipos `stepper`, `search` e `timeselect` no `DynamicForm`); Setup Wizard com quantidade de torres, nomes sugeridos, listas suspensas, duplicação de torre e aviso antes de descartar; Portaria sem acesso a chamados/ocorrências.
+
+Aguardam contrato da API (não implementar no front antes):
+
+- Térreo (andar zero, térreo sem apartamentos) e reexecução segura do Wizard (CONDO-01, CONDO-13).
+- Encomenda para unidade vazia e sem destinatário identificado; dados do retirante e conferência do código (CONDO-05, 05.1).
+- Visita sem autorização antecipada, com morador responsável e método de confirmação (CONDO-07).
+- Reservas: horário que atravessa a meia-noite, horário de funcionamento e taxa da área, pagamento manual pelo ADMIN (CONDO-08). Decisão de produto pendente: o código atual usa aprovação pelo proprietário.
+- Ocorrências com 3 estados, mensagens e solução obrigatória (CONDO-09).
+- Mudança de unidade com histórico e vínculos múltiplos (CONDO-11).

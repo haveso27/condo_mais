@@ -108,7 +108,7 @@ function EntityModule({ role, type }) {
         if (remoteTickets && field.key === 'location') return { ...field, label: 'Local / unidade', type: 'select', options: [TICKET_COMMON_AREA, ...(data.units || []).map(ticketUnitLabel)] }
         if (remoteNotices && field.key === 'endDate') return { ...field, label: 'Válido até', required: false }
         if (field.key === 'tower') return { ...field, options: towerNames }
-        if ((remotePackages || remoteVisitors) && field.key === 'unit') return { ...field, type: 'select', options: packageUnitOptions }
+        if ((remotePackages || remoteVisitors) && field.key === 'unit') return { ...field, type: 'search', options: packageUnitOptions, placeholder: 'Digite para buscar a unidade' }
         return field
       })
     : config.fields
