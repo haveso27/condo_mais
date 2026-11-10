@@ -47,9 +47,15 @@ export function toTicket(chamado) {
   }
 }
 
+// A portaria não tem acesso às ocorrências (o backend responde 403): para ela a lista fica vazia
 export async function carregarChamados(options) {
-  const chamados = await apiGet('/atendimento/chamados', {}, options)
-  return (chamados || []).map(toTicket)
+  try {
+    const chamados = await apiGet('/atendimento/chamados', {}, options)
+    return (chamados || []).map(toTicket)
+  } catch (error) {
+    if (error.status === 403) return []
+    throw error
+  }
 }
 
 export async function carregarChamado(id, options) {

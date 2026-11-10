@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { setToken } from '../src/services/api.js'
-import { TICKET_COMMON_AREA, atualizarChamado, comentarChamado, ticketBody, ticketUnitLabel, toTicket } from '../src/services/chamadosApi.js'
+import { TICKET_COMMON_AREA, atualizarChamado, carregarChamados, comentarChamado, ticketBody, ticketUnitLabel, toTicket } from '../src/services/chamadosApi.js'
 
 const storage = new Map()
 globalThis.sessionStorage = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)), removeItem: (key) => storage.delete(key) }
@@ -64,4 +64,11 @@ test('andamento e comentário usam PUT e POST /comentarios', async () => {
   assert.equal(calls[2].url.endsWith('/atendimento/chamados/c-1/comentarios'), true)
   assert.deepEqual(JSON.parse(calls[2].init.body), { comentario: 'Técnico chamado' })
   assert.throws(() => comentarChamado('c-1', ' ', { fetchImpl }), (error) => error.status === 400)
+})
+
+test('portaria sem acesso às ocorrências: o 403 vira lista vazia, os demais erros continuam', async () => {
+  setToken('token')
+  const reply = (status) => async () => ({ ok: status < 400, status, json: async () => ({ mensagem: 'erro' }), text: async () => JSON.stringify({ mensagem: 'erro' }) })
+  assert.deepEqual(await carregarChamados({ fetchImpl: reply(403) }), [])
+  await assert.rejects(carregarChamados({ fetchImpl: reply(500) }), (error) => error.status === 500)
 })
