@@ -339,7 +339,7 @@ export function wizardReducer(state, action) {
       const nextId = state.nextTowerId + 1
       // Só a configuração é copiada: a nova torre recebe identidade e nome próprios
       const copy = { ...state.draft.towers[index], id: `tower-${nextId}`, name: suggestTowerName(state.draft.towers) }
-      const towers = [...state.draft.towers.slice(0, index + 1), copy, ...state.draft.towers.slice(index + 1)]
+      const towers = [...state.draft.towers, copy]
       return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers } }
     }
     case 'SET_TOWER_COUNT': {

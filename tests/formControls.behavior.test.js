@@ -131,3 +131,13 @@ test('a Portaria não possui tela de chamados', () => {
   assert.equal(entityConfigs.chamadosPortaria, undefined)
   assert.ok(entityConfigs.chamadosAdmin)
 })
+
+// Regressão: o diálogo do Wizard fica dentro do <form>; seus botões não podem enviar o formulário
+test('botões do Modal não enviam o formulário que o contém', async () => {
+  const { default: Modal } = await server.ssrLoadModule('/src/components/Modal.jsx')
+  let submitted = 0
+  const view = render(React.createElement('form', { onSubmit: (event) => { event.preventDefault(); submitted += 1 } },
+    React.createElement(Modal, { open: true, title: 'Descartar', onClose() {}, onConfirm() {}, confirmLabel: 'Descartar' })))
+  for (const name of ['Descartar', 'Cancelar', 'Fechar']) fireEvent.click(view.getAllByRole('button', { name })[0])
+  assert.equal(submitted, 0)
+})
