@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { initialAppData } from '../src/mocks/appData.js'
 import { activeNotices, basicValidation, futureReservations, noticePeriodError, sameUnit, statusLabel, todayIso, unitDuplicate, unitEditPatch, unitStatusField } from '../src/services/serviceUtils.js'
-import { visitorEffectiveStatus, visitorEntryError, visitantesService } from '../src/services/visitantesService.js'
+import { visitPeriodError, visitorEffectiveStatus, visitorEntryError, visitantesService } from '../src/services/visitantesService.js'
 import { reservasService } from '../src/services/reservasService.js'
 import { chamadosService } from '../src/services/chamadosService.js'
 import { avisosService } from '../src/services/avisosService.js'
@@ -136,4 +136,11 @@ test('Regressão: proprietário/inquilino e separação de prestadores', () => {
   assert.equal(reservasService.alterarStatus([tenant], tenant.id, 'RECUSADA')[0].status, 'RECUSADA')
   assert.equal(prestadoresService.alterarStatus(data.providers, 'PRE-203', 'ENTROU').length, data.providers.length)
   assert.equal(data.visitors.length, 6)
+})
+test('período da autorização de visita: término depois do início e no máximo 30 dias', () => {
+  const base = { startDate: '2026-11-10', startTime: '10:00', endTime: '10:00' }
+  assert.equal(visitPeriodError({ ...base, endDate: '2026-12-10' }), '')
+  assert.match(visitPeriodError({ ...base, endDate: '2026-12-11' }), /máximo 30 dias/)
+  assert.match(visitPeriodError({ ...base, endDate: '2026-11-10' }), /posterior/)
+  assert.equal(visitPeriodError({ startDate: '2026-11-10' }), '')
 })

@@ -16,7 +16,7 @@ import { encomendasService } from '../../services/encomendasService'
 import { prestadoresService } from '../../services/prestadoresService'
 import { reservasService } from '../../services/reservasService'
 import { basicValidation, noticePeriodError, unitDuplicate, unitEditPatch, unitStatusField, matchesQuery, statusLabel, todayIso } from '../../services/serviceUtils'
-import { visitantesService, visitorEntryError } from '../../services/visitantesService'
+import { visitPeriodError, visitantesService, visitorEntryError } from '../../services/visitantesService'
 import { findPackageUnit } from '../../services/encomendasApi'
 import { TICKET_COMMON_AREA, ticketUnitLabel } from '../../services/chamadosApi'
 import { areaBody, areaNameTaken, areasService } from '../../services/areasComunsApi'
@@ -46,12 +46,7 @@ function validate(fields, values) {
   const missing = fields.find((field) => field.required && !String(values[field.key] ?? '').trim())
   if (missing) return `Preencha o campo “${missing.label}”.`
   if (values.destination === 'Torre/Bloco específico' && !values.tower) return 'Selecione a Torre / Bloco.'
-  if (values.startDate && values.startTime && values.endDate && values.endTime) {
-    const start = new Date(`${values.startDate}T${values.startTime}:00`)
-    const end = new Date(`${values.endDate}T${values.endTime}:00`)
-    if (end <= start) return 'O término da autorização deve ser posterior ao início.'
-  }
-  return ''
+  return visitPeriodError(values)
 }
 
 export default function EntityPage(props) {

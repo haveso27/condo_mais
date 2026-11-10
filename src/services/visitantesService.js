@@ -6,6 +6,16 @@ function asDate(date, time) {
   return Number.isNaN(value.getTime()) ? null : value
 }
 
+// Mesmas regras do backend: término depois do início e no máximo 30 dias (autorização é por visita, não permanente)
+const MAX_AUTHORIZATION_DAYS = 30
+export function visitPeriodError(values) {
+  const start = asDate(values.startDate, values.startTime)
+  const end = asDate(values.endDate, values.endTime)
+  if (!start || !end) return ''
+  if (end <= start) return 'O término da autorização deve ser posterior ao início.'
+  return end - start > MAX_AUTHORIZATION_DAYS * 86_400_000 ? `O término da autorização pode ser no máximo ${MAX_AUTHORIZATION_DAYS} dias depois do início.` : ''
+}
+
 export function visitorEffectiveStatus(record, now = new Date()) {
   const end = asDate(record.endDate, record.endTime)
   if (end && end < now && ['PENDENTE', 'AUTORIZADO'].includes(record.status)) return 'EXPIRADO'

@@ -15,7 +15,7 @@ import { reservasService } from '../../services/reservasService'
 import { availabilityFromOccupation, bookableAreas, carregarOcupacaoDoPeriodo } from '../../services/reservasApi'
 import { TICKET_COMMON_AREA, ticketUnitLabel } from '../../services/chamadosApi'
 import { statusLabel, sameUnit, activeNotices, basicValidation } from '../../services/serviceUtils'
-import { visitantesService } from '../../services/visitantesService'
+import { visitPeriodError, visitantesService } from '../../services/visitantesService'
 
 import { confirmationMessage, emptyMessage } from '../../config/uiPresentation'
 import { priorities, commonAreas } from '../../config/catalogs'
@@ -62,12 +62,6 @@ function ticketFields(resident, units) {
   return [{ key: 'title', label: 'Título', required: true }, { key: 'description', label: 'Descrição', type: 'textarea', required: true }, { key: 'category', label: 'Categoria', type: 'select', options: ['Manutenção', 'Convivência', 'Segurança', 'Outros'], required: true }, { key: 'location', label: 'Local', type: 'select', options: [ownLocation, 'Área comum', ...towers, 'Corredores', 'Elevadores', 'Garagem', 'Outro local'], required: true }, { key: 'priority', label: 'Prioridade', type: 'select', options: priorities, required: true }, { key: 'notes', label: 'Observação', type: 'textarea' }]
 }
 
-function authorizationPeriodError(values) {
-  if (!values.startDate || !values.startTime || !values.endDate || !values.endTime) return ''
-  const start = new Date(`${values.startDate}T${values.startTime}:00`)
-  const end = new Date(`${values.endDate}T${values.endTime}:00`)
-  return end <= start ? 'O término da autorização deve ser posterior ao início.' : ''
-}
 
 const listConfigs = {
   visitantes: { title: 'Visitantes', subtitle: 'Gerencie o acesso dos seus visitantes.', action: 'Autorizar visitante', tabs: [['Todos', []], ['Pendentes', ['PENDENTE']], ['Autorizados', ['AUTORIZADO']], ['Presentes', ['ENTROU']], ['Histórico', ['SAIU', 'RECUSADO', 'EXPIRADO']]], fields: visitorFields, icon: UserRound, empty: 'Nenhum visitante encontrado.' },
@@ -150,7 +144,7 @@ function ResidentListModule({ type }) {
     if (type === 'visitantes') {
       // Na API quem confere o vínculo com a unidade é o servidor (o morador não recebe a lista de moradores)
       if (!remoteVisitors && !visitantesService.podeAutorizar(data.residents, data.currentResident)) { setError('Seu perfil não possui vínculo ativo com esta unidade.'); return }
-      const periodError = authorizationPeriodError(form) || basicValidation(form)
+      const periodError = visitPeriodError(form) || basicValidation(form)
       if (periodError) { setError(periodError); return }
     }
     if (type === 'reservas' && !availability?.available) { setError(availability?.message || 'Verifique a disponibilidade.'); return }
