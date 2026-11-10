@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { setToken } from '../src/services/api.js'
-import { alterarStatusReserva, availabilityFromOccupation, bookableAreas, carregarOcupacao, reservationEffectiveStatus, solicitarReserva, toArea, toReservation } from '../src/services/reservasApi.js'
+import { alterarStatusReserva, availabilityFromOccupation, bookableAreas, carregarOcupacao, carregarOcupacaoDoPeriodo, reservationEffectiveStatus, solicitarReserva, toArea, toReservation } from '../src/services/reservasApi.js'
 
 const storage = new Map()
 globalThis.sessionStorage = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)), removeItem: (key) => storage.delete(key) }
@@ -20,7 +20,7 @@ test('reserva da API vira reserva da tela, com horários HH:mm e status das abas
   const now = new Date('2026-10-27T12:00:00')
   const reserva = { id: 'r-1', areaId: 'ar-1', areaNome: 'Salão', dataReserva: '2026-11-02', horarioInicio: '18:00:00', horarioFim: '22:30', status: 'AGUARDANDO APROVACAO', moradorNome: 'Carla', apartamentoNumero: '101', torreNome: null, aprovadorNome: null }
   assert.deepEqual(toReservation(reserva, now), {
-    id: 'r-1', area: 'Salão', areaId: 'ar-1', resident: 'Carla', tower: '', unit: '101', date: '2026-11-02',
+    id: 'r-1', area: 'Salão', areaId: 'ar-1', resident: 'Carla', tower: '', unit: '101', date: '2026-11-02', endDate: '',
     startTime: '18:00', endTime: '22:30', approvedBy: '', status: 'AGUARDANDO_APROVACAO',
   })
 })
@@ -44,20 +44,51 @@ test('só áreas ativas e reserváveis aparecem para reservar', () => {
 })
 
 test('disponibilidade a partir da agenda real da área', () => {
-  const occupied = [{ startTime: '18:00', endTime: '22:00' }]
-  assert.equal(availabilityFromOccupation(occupied, { startTime: '17:00', endTime: '18:30' }).available, false)
-  assert.equal(availabilityFromOccupation(occupied, { startTime: '22:00', endTime: '23:00' }).available, true)
-  assert.match(availabilityFromOccupation(occupied, { startTime: '20:00', endTime: '19:00' }).message, /posterior/)
+  const occupied = [{ date: '2026-11-02', startTime: '18:00', endTime: '22:00' }]
+  const day = { date: '2026-11-02' }
+  assert.equal(availabilityFromOccupation(occupied, { ...day, startTime: '17:00', endTime: '18:30' }).available, false)
+  assert.equal(availabilityFromOccupation(occupied, { ...day, startTime: '22:00', endTime: '23:00' }).available, true)
+  assert.match(availabilityFromOccupation(occupied, { ...day, startTime: '20:00', endTime: '19:00' }).message, /posterior.*data final/)
+})
+
+test('reserva que passa da meia-noite: período com data final e conflito nos dois dias', () => {
+  // Reserva de 22h às 02h que começou na véspera aparece na agenda do dia seguinte
+  const occupied = [{ date: '2026-11-02', endDate: '2026-11-03', startTime: '22:00', endTime: '02:00' }]
+  const night = { date: '2026-11-03', endDate: '2026-11-04', startTime: '23:00', endTime: '01:00' }
+  assert.equal(availabilityFromOccupation(occupied, night).available, true)
+  assert.equal(availabilityFromOccupation(occupied, { date: '2026-11-03', startTime: '01:00', endTime: '03:00' }).available, false)
+  assert.equal(availabilityFromOccupation(occupied, { date: '2026-11-03', startTime: '02:00', endTime: '04:00' }).available, true)
+  assert.equal(availabilityFromOccupation(occupied, { date: '2026-11-02', endDate: '2026-11-03', startTime: '23:00', endTime: '01:00' }).available, false)
+  assert.match(availabilityFromOccupation([], { date: '2026-11-03', endDate: '2026-11-04', startTime: '10:00', endTime: '11:00' }).message, /24 horas/)
+  assert.match(availabilityFromOccupation([], { date: '2026-11-03', endDate: '2026-11-02', startTime: '10:00', endTime: '11:00' }).message, /depois do início/)
+
+  const reserva = { id: 'r-2', areaNome: 'Salão', dataReserva: '2026-11-02', dataFim: '2026-11-03', horarioInicio: '22:00:00', horarioFim: '02:00:00', status: 'CONFIRMADA' }
+  assert.equal(toReservation(reserva, new Date('2026-11-03T01:00:00')).endDate, '2026-11-03')
+  // Só fica Concluída depois das 02h do dia seguinte
+  assert.equal(toReservation(reserva, new Date('2026-11-03T01:00:00')).status, 'CONFIRMADA')
+  assert.equal(toReservation(reserva, new Date('2026-11-03T02:30:00')).status, 'CONCLUIDA')
+})
+
+test('agenda do período consulta o dia do início e o do fim, sem repetir a reserva noturna', async () => {
+  setToken('token')
+  const noturna = { dataReserva: '2026-11-02', dataFim: '2026-11-03', horarioInicio: '22:00:00', horarioFim: '02:00:00', status: 'CONFIRMADA' }
+  const { fetchImpl, calls } = fakeFetch([noturna])
+  const slots = await carregarOcupacaoDoPeriodo('ar-1', '2026-11-02', '2026-11-03', { fetchImpl })
+  assert.equal(calls.length, 2)
+  assert.match(calls[1].url, /data=2026-11-03$/)
+  assert.deepEqual(slots, [{ date: '2026-11-02', endDate: '2026-11-03', startTime: '22:00', endTime: '02:00', status: 'CONFIRMADA' }])
 })
 
 test('ocupação, pedido e mudanças de status usam as rotas do backend', async () => {
   setToken('token')
   const { fetchImpl, calls } = fakeFetch([{ horarioInicio: '18:00:00', horarioFim: '22:00:00', status: 'CONFIRMADA' }])
-  assert.deepEqual(await carregarOcupacao('ar-1', '2026-11-02', { fetchImpl }), [{ startTime: '18:00', endTime: '22:00', status: 'CONFIRMADA' }])
+  assert.deepEqual(await carregarOcupacao('ar-1', '2026-11-02', { fetchImpl }), [{ date: '2026-11-02', endDate: '2026-11-02', startTime: '18:00', endTime: '22:00', status: 'CONFIRMADA' }])
   assert.match(calls[0].url, /\/interativo\/reservas\/ocupacao\?areaId=ar-1&data=2026-11-02$/)
 
   await solicitarReserva({ area: 'Salão', date: '2026-11-02', startTime: '10:00', endTime: '12:00' }, [{ id: 'ar-1', name: 'Salão' }], { fetchImpl })
-  assert.deepEqual(JSON.parse(calls[1].init.body), { areaId: 'ar-1', dataReserva: '2026-11-02', horarioInicio: '10:00', horarioFim: '12:00' })
+  assert.deepEqual(JSON.parse(calls[1].init.body), { areaId: 'ar-1', dataReserva: '2026-11-02', horarioInicio: '10:00', horarioFim: '12:00', dataFim: '2026-11-02' })
+  await solicitarReserva({ area: 'Salão', date: '2026-11-02', endDate: '2026-11-03', startTime: '22:00', endTime: '02:00' }, [{ id: 'ar-1', name: 'Salão' }], { fetchImpl })
+  assert.equal(JSON.parse(calls[2].init.body).dataFim, '2026-11-03')
   await assert.rejects(solicitarReserva({ area: 'Outra' }, [], { fetchImpl }), (error) => error.status === 400)
 
   for (const [status, route] of [['CONFIRMADA', 'aprovar'], ['RECUSADA', 'recusar'], ['CANCELADA', 'cancelar']]) {

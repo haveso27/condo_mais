@@ -19,7 +19,7 @@ export const detailFields = {
   visitors: ['id', 'name', 'cpf', 'phone', 'tower', 'unit', 'resident', 'startDate', 'startTime', 'endDate', 'endTime', 'status', 'source', 'entryAt', 'doormanIn', 'exitAt', 'doormanOut', 'notes'],
   providers: ['id', 'name', 'cpf', 'company', 'service', 'tower', 'location', 'date', 'time', 'status', 'entryAt', 'exitAt', 'notes'],
   packages: ['code', 'resident', 'tower', 'unit', 'receivedAt', 'doorman', 'status', 'withdrawnAt', 'withdrawnBy', 'notes'],
-  reservations: ['id', 'area', 'resident', 'tower', 'unit', 'date', 'startTime', 'endTime', 'status', 'requestedByOwner', 'approvedBy', 'notes'],
+  reservations: ['id', 'area', 'resident', 'tower', 'unit', 'date', 'startTime', 'endDate', 'endTime', 'status', 'requestedByOwner', 'approvedBy', 'notes'],
   tickets: ['id', 'code', 'title', 'description', 'category', 'location', 'resident', 'priority', 'status', 'openedAt', 'closedAt', 'provider', 'providerContact', 'forecast', 'notes'],
   notices: ['id', 'title', 'content', 'priority', 'destination', 'tower', 'startDate', 'endDate', 'author', 'status'],
   residents: ['id', 'name', 'cpf', 'email', 'phone', 'tower', 'unit', 'relation', 'isOwner', 'status'],

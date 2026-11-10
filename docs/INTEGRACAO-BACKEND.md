@@ -254,6 +254,6 @@ Aguardam contrato da API (não implementar no front antes):
 - Térreo (andar zero, térreo sem apartamentos) e reexecução segura do Wizard (CONDO-01, CONDO-13).
 - Encomenda para unidade vazia e sem destinatário identificado; dados do retirante e conferência do código (CONDO-05, 05.1).
 - Visita sem autorização antecipada, com morador responsável e método de confirmação (CONDO-07).
-- Reservas: horário que atravessa a meia-noite, horário de funcionamento e taxa da área, pagamento manual pelo ADMIN (CONDO-08). Decisão de produto pendente: o código atual usa aprovação pelo proprietário.
+- Reservas: horário de funcionamento e taxa da área, pagamento manual pelo ADMIN (CONDO-08). Decisão de produto pendente: o código atual usa aprovação pelo proprietário. (Reserva que atravessa a meia-noite já feita: campo "Termina no dia" e `dataFim` na API.)
 - Ocorrências com 3 estados, mensagens e solução obrigatória (CONDO-09).
 - Mudança de unidade com histórico e vínculos múltiplos (CONDO-11).

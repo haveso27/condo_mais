@@ -12,7 +12,7 @@ import { useAppData } from '../../context/AppDataContext'
 import ResidentLayout from '../../layouts/ResidentLayout'
 import { logout } from '../../services/authApi'
 import { reservasService } from '../../services/reservasService'
-import { availabilityFromOccupation, bookableAreas, carregarOcupacao } from '../../services/reservasApi'
+import { availabilityFromOccupation, bookableAreas, carregarOcupacaoDoPeriodo } from '../../services/reservasApi'
 import { TICKET_COMMON_AREA, ticketUnitLabel } from '../../services/chamadosApi'
 import { statusLabel, sameUnit, activeNotices, basicValidation } from '../../services/serviceUtils'
 import { visitantesService } from '../../services/visitantesService'
@@ -54,7 +54,7 @@ export function MorePage() {
 }
 
 const visitorFields = [{ key: 'name', label: 'Nome do visitante', required: true }, { key: 'cpf', label: 'CPF', required: true }, { key: 'phone', label: 'Telefone' }, { key: 'startDate', label: 'Data de início', type: 'date', required: true }, { key: 'startTime', label: 'Horário de início', type: 'timeselect', required: true }, { key: 'endDate', label: 'Data de término', type: 'date', required: true }, { key: 'endTime', label: 'Horário de término', type: 'timeselect', required: true }, { key: 'notes', label: 'Observação', type: 'textarea' }]
-const reservationFields = [{ key: 'area', label: 'Área comum', type: 'select', options: commonAreas, required: true }, { key: 'date', label: 'Data', type: 'date', required: true }, { key: 'startTime', label: 'Horário inicial', type: 'timeselect', required: true }, { key: 'endTime', label: 'Horário final', type: 'timeselect', required: true }, { key: 'notes', label: 'Observação', type: 'textarea' }]
+const reservationFields = [{ key: 'area', label: 'Área comum', type: 'select', options: commonAreas, required: true }, { key: 'date', label: 'Data', type: 'date', required: true }, { key: 'startTime', label: 'Horário inicial', type: 'timeselect', required: true }, { key: 'endTime', label: 'Horário final', type: 'timeselect', required: true }, { key: 'endDate', label: 'Termina no dia (só se passar da meia-noite)', type: 'date' }, { key: 'notes', label: 'Observação', type: 'textarea' }]
 
 function ticketFields(resident, units) {
   const ownLocation = `Unidade ${resident.unit} · ${resident.tower}`
@@ -110,13 +110,14 @@ function ResidentListModule({ type }) {
     : remoteReservations
       ? config.fields.filter((field) => field.key !== 'notes').map((field) => field.key === 'area' ? { ...field, options: areaOptions.map((area) => area.name) } : field)
       : config.fields
-  const occupationKey = remoteReservations && type === 'reservas' && selectedArea && form.date ? `${selectedArea.id}|${form.date}` : ''
+  // A reserva que passa da meia-noite consulta também a agenda do dia em que termina
+  const occupationKey = remoteReservations && type === 'reservas' && selectedArea && form.date ? `${selectedArea.id}|${form.date}|${form.endDate || ''}` : ''
   useEffect(() => {
     if (!occupationKey) return undefined
     let current = true
-    const [areaId, date] = occupationKey.split('|')
+    const [areaId, date, endDate] = occupationKey.split('|')
     setOccupation({ key: occupationKey, slots: null, error: '' })
-    carregarOcupacao(areaId, date).then(
+    carregarOcupacaoDoPeriodo(areaId, date, endDate).then(
       (slots) => { if (current) setOccupation({ key: occupationKey, slots, error: '' }) },
       (loadError) => { if (current) setOccupation({ key: occupationKey, slots: null, error: loadError.message }) },
     )
@@ -230,7 +231,7 @@ function ResidentListModule({ type }) {
   function summary(record) {
     if (type === 'visitantes') return [`${record.startDate} · ${record.startTime}`, `Até ${record.endDate} · ${record.endTime}`, statusLabel(record.status)]
     if (type === 'chamados') return [record.code || record.id, record.openedAt, statusLabel(record.status)]
-    return [record.date, `${record.startTime} – ${record.endTime}`, statusLabel(record.status)]
+    return [record.date, `${record.startTime} – ${record.endTime}${record.endDate ? ` (termina em ${record.endDate})` : ''}`, statusLabel(record.status)]
   }
   if (type === 'aprovacoes' && !data.currentResident.isOwner) return <ResidentLayout><section className="resident-page"><ResidentPageHeader backTo="/morador/mais" title="Aprovações" subtitle="Acesso exclusivo para proprietários." /><EmptyState title="Seu vínculo não possui permissão para aprovar reservas." /></section></ResidentLayout>
   const collection = type === 'visitantes' ? 'visitors' : type === 'chamados' ? 'tickets' : 'reservations'
