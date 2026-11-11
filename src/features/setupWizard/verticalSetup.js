@@ -28,8 +28,15 @@ export function createTower(id = 'tower-1') {
     firstUnit: '1',
     unitDigits: '2',
     separator: '',
+    ground: GROUND_WITHOUT_UNITS,
   }
 }
+
+// Térreo (CONDO-01). Com apartamentos, o andar 0 entra além dos andares informados, com as mesmas unidades
+// por andar e a mesma numeração (001, 0-01). Sem apartamentos ou sem térreo residencial: nada no andar 0.
+export const GROUND_WITH_UNITS = 'COM_APARTAMENTOS'
+export const GROUND_WITHOUT_UNITS = 'SEM_APARTAMENTOS'
+export const GROUND_OPTIONS = [[GROUND_WITHOUT_UNITS, 'Térreo sem apartamentos'], [GROUND_WITH_UNITS, 'Térreo com apartamentos'], ['SEM_TERREO', 'Sem térreo residencial']]
 
 export const MAX_TOWERS = 30
 
@@ -84,9 +91,10 @@ function towerNumbers(tower) {
     unitDigits: strictInteger(tower.unitDigits),
   }
   if (Object.entries(values).some(([field, value]) => value === null || value < 1 || value > SETUP_LIMITS[field])) return null
-  const total = values.floorCount * values.unitsPerFloor
+  const floors = [...(tower.ground === GROUND_WITH_UNITS ? [0] : []), ...Array.from({ length: values.floorCount }, (_, offset) => values.firstFloor + offset)]
+  const total = floors.length * values.unitsPerFloor
   if (!Number.isSafeInteger(total)) return null
-  return { ...values, total }
+  return { ...values, floors, total }
 }
 
 const unitNumber = (tower, floor, sequence) => `${floor}${tower.separator || ''}${String(sequence).padStart(strictInteger(tower.unitDigits), '0')}`
@@ -111,19 +119,18 @@ export function getTowerUnitPreview(tower) {
   if (!values || values.total > SETUP_LIMITS.totalUnits) return { total: 0, first: '', last: '' }
   return {
     total: values.total,
-    first: unitNumber(tower, values.firstFloor, values.firstUnit),
-    last: unitNumber(tower, values.firstFloor + values.floorCount - 1, values.firstUnit + values.unitsPerFloor - 1),
+    first: unitNumber(tower, values.floors[0], values.firstUnit),
+    last: unitNumber(tower, values.floors.at(-1), values.firstUnit + values.unitsPerFloor - 1),
   }
 }
 
 export function generateTowerUnits(tower) {
   const values = towerNumbers(tower)
   if (!values || values.total > SETUP_LIMITS.totalUnits) return []
-  const { floorCount, unitsPerFloor, firstFloor, firstUnit } = values
+  const { floors, unitsPerFloor, firstUnit } = values
 
   const units = []
-  for (let floorOffset = 0; floorOffset < floorCount; floorOffset += 1) {
-    const floor = firstFloor + floorOffset
+  for (const floor of floors) {
     for (let unitOffset = 0; unitOffset < unitsPerFloor; unitOffset += 1) {
       const sequence = String(firstUnit + unitOffset).padStart(values.unitDigits, '0')
       units.push({
@@ -147,7 +154,7 @@ export function generateUnits(towers) {
 export function summarizeTowerUnits(tower, { maxFloors = 5, maxUnitsPerFloor = 8 } = {}) {
   const values = towerNumbers(tower)
   if (!values || values.total > SETUP_LIMITS.totalUnits) return { total: 0, first: '', last: '', omittedFloors: 0, floors: [] }
-  const allFloors = Array.from({ length: values.floorCount }, (_, offset) => values.firstFloor + offset)
+  const allFloors = values.floors
   const leadingFloors = Math.ceil(maxFloors / 2)
   const trailingFloors = Math.floor(maxFloors / 2)
   const visibleFloors = allFloors.length <= maxFloors
@@ -173,10 +180,7 @@ export function summarizeTowerUnits(tower, { maxFloors = 5, maxUnitsPerFloor = 8
 export function getTowerFloors(tower) {
   const values = towerNumbers(tower)
   if (!values || values.total > SETUP_LIMITS.totalUnits) return []
-  return Array.from({ length: values.floorCount }, (_, offset) => {
-    const floor = values.firstFloor + offset
-    return { floor, numbers: Array.from({ length: values.unitsPerFloor }, (_, unit) => unitNumber(tower, floor, values.firstUnit + unit)) }
-  })
+  return values.floors.map((floor) => ({ floor, numbers: Array.from({ length: values.unitsPerFloor }, (_, unit) => unitNumber(tower, floor, values.firstUnit + unit)) }))
 }
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
@@ -315,6 +319,7 @@ export function buildSetupPayload(draft) {
       sequenciaInicial: strictInteger(tower.firstUnit),
       digitos: strictInteger(tower.unitDigits),
       separador: tower.separator || '',
+      terreo: tower.ground || GROUND_WITHOUT_UNITS,
     })),
     // As áreas sugeridas entram sem reserva; as personalizadas seguem a marcação feita na tela.
     // Reserva e aprovação podem ser ajustadas depois, no cadastro de áreas comuns.

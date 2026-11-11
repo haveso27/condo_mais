@@ -25,10 +25,14 @@ function prefersReducedMotion() {
   try { return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) } catch { return false }
 }
 
+// O andar 0 é o térreo (com apartamentos)
+const floorName = (floor) => (floor === 0 ? 'Térreo' : `Andar ${floor}`)
+
 export default function BuildingPreview({ tower, totalUnits, towerCount = 1 }) {
   const floors = useMemo(() => getTowerFloors(tower), [tower])
   const preview = getTowerUnitPreview(tower)
-  const geometry = buildingGeometry(tower.floorCount, tower.unitsPerFloor)
+  // O térreo com apartamentos é um andar a mais na fachada
+  const geometry = buildingGeometry(floors.length || tower.floorCount, tower.unitsPerFloor)
   const [selected, setSelected] = useState(() => floors[0]?.floor ?? 1)
   const [auto, setAuto] = useState(() => !prefersReducedMotion())
   const view = useRef({ ...INITIAL_VIEW })
@@ -125,7 +129,7 @@ export default function BuildingPreview({ tower, totalUnits, towerCount = 1 }) {
         <span className="building-preview__view">Vista: <span ref={viewLabelRef} /></span>
       </header>
       <div className="building-preview__stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp} onPointerCancel={onPointerUp}>
-        <div className="building-preview__floor-badge"><i aria-hidden="true" /><strong>Andar {current.floor}</strong><span>{range}</span></div>
+        <div className="building-preview__floor-badge"><i aria-hidden="true" /><strong>{floorName(current.floor)}</strong><span>{range}</span></div>
         <p className="building-preview__hint"><Hand size={14} aria-hidden="true" /> Arraste para girar · toque em um andar para destacar</p>
         <div ref={sceneRef} className="building-scene" aria-hidden="true" style={{ width: g.width, height: g.height }}>
           <div className="building-plate" style={{ left: (g.width - plate) / 2, top: g.height - plate / 2, width: plate, height: plate }} />
@@ -174,7 +178,7 @@ export default function BuildingPreview({ tower, totalUnits, towerCount = 1 }) {
       </div>
       <div className="building-panel building-panel--selected">
         <div className="building-panel__heading">
-          <div><span>Andar selecionado</span><strong>Andar {current.floor}</strong></div>
+          <div><span>Andar selecionado</span><strong>{floorName(current.floor)}</strong></div>
           <div className="building-panel__arrows">
             <button type="button" className="building-icon-button" aria-label="Andar abaixo" disabled={current.floor === first} onClick={() => setSelected(Math.max(first, current.floor - 1))}><ChevronDown size={16} /></button>
             <button type="button" className="building-icon-button" aria-label="Andar acima" disabled={current.floor === last} onClick={() => setSelected(Math.min(last, current.floor + 1))}><ChevronUp size={16} /></button>
