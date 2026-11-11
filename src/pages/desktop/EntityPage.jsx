@@ -1,5 +1,6 @@
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import RecordDetails from '../../components/RecordDetails'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import DynamicForm from '../../components/DynamicForm'
@@ -387,7 +388,7 @@ function EntityModule({ role, type }) {
 
   return <DesktopLayout role={role}>
     <section className="entity-page">
-      <div className="entity-heading"><div><h1>{config.title}</h1><p>{config.subtitle}</p></div><div className="entity-heading-actions">{remoteMode && config.collection === 'units' && <button className="secondary-button" onClick={() => { setTowerForm({ name: '' }); setError('') }}>+ Nova torre</button>}{config.action && <button className="desktop-primary" onClick={startCreate}>+ {config.action}</button>}</div></div>
+      <div className="entity-heading"><div><h1>{config.title}</h1><p>{config.subtitle}</p></div><div className="entity-heading-actions">{remoteMode && config.collection === 'units' && ['', 'VERTICAL'].includes(data.condominium.model || '') && <Link className="secondary-button" to="/admin/torres/novas">Adicionar torres pelo assistente</Link>}{remoteMode && config.collection === 'units' && <button className="secondary-button" onClick={() => { setTowerForm({ name: '' }); setError('') }}>+ Nova torre</button>}{config.action && <button className="desktop-primary" onClick={startCreate}>+ {config.action}</button>}</div></div>
       <div className="entity-toolbar"><div className="tabs">{config.tabs.map(([label], index) => <button aria-pressed={tab === index} className={tab === index ? 'active' : ''} onClick={() => setTab(index)} key={label}>{label}</button>)}</div><label className="search-box"><Search size={17} /><input aria-label="Buscar registros" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar registros..." /></label></div>
       <div className="advanced-filters">
         {showTower && <label>Torre / Bloco<select value={filters.tower} onChange={(event) => setFilter('tower', event.target.value)}><option value="">Todas</option>{(remoteMode ? towerNames : towers).map((item) => <option key={item}>{item}</option>)}</select></label>}

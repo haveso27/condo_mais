@@ -112,7 +112,8 @@ function TowerCard({ tower, index, suggestion, canRemove, canDuplicate, dispatch
 }
 
 // Descartar torres nunca é silencioso: remover uma ou reduzir a quantidade pede confirmação
-function TowersStep({ towers, dispatch, errors }) {
+// existingNames: torres já cadastradas (ao acrescentar torres pelo assistente), para a sugestão não repetir nomes
+export function TowersStep({ towers, dispatch, errors, existingNames = [] }) {
   const [pending, setPending] = useState(null)
   const removing = pending?.type === 'count' ? towers.slice(pending.count) : pending?.tower ? [pending.tower] : []
   const confirmRemoval = () => {
@@ -127,7 +128,7 @@ function TowersStep({ towers, dispatch, errors }) {
   }
   return <div className="setup-stack">
     <div className="setup-field setup-towers-count"><label htmlFor="setup-tower-count">Quantidade de torres</label><NumberStepper id="setup-tower-count" label="torres" min={1} max={MAX_TOWERS} value={String(towers.length)} onChange={changeCount} /></div>
-    {towers.map((tower, index) => <TowerCard key={tower.id} tower={tower} index={index} suggestion={suggestTowerName(towers)} canRemove={towers.length > 1} canDuplicate={towers.length < MAX_TOWERS} dispatch={dispatch} errors={errors} onRemove={(item) => setPending({ type: 'remove', tower: item })} />)}
+    {towers.map((tower, index) => <TowerCard key={tower.id} tower={tower} index={index} suggestion={suggestTowerName([...existingNames.map((name) => ({ name })), ...towers])} canRemove={towers.length > 1} canDuplicate={towers.length < MAX_TOWERS} dispatch={dispatch} errors={errors} onRemove={(item) => setPending({ type: 'remove', tower: item })} />)}
     <button type="button" className="setup-add-button" onClick={() => dispatch({ type: 'ADD_TOWER' })} disabled={towers.length >= MAX_TOWERS}><Plus size={18} /> Adicionar outra torre</button>
     <ConfirmDialog open={Boolean(pending)} title="Descartar torres?" message={`Os dados de ${removing.map((tower) => tower.name.trim() || 'torre sem nome').join(', ')} serão descartados. Nada foi gravado ainda, mas será preciso preencher novamente se você mudar de ideia.`} destructive confirmLabel="Descartar" onCancel={() => setPending(null)} onConfirm={confirmRemoval} />
   </div>
