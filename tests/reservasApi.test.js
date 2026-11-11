@@ -112,3 +112,21 @@ test('área paga e reserva aguardando pagamento: taxa formatada, como pagar e qu
   assert.match(reserva.fee, /150,00/)
   assert.equal(reserva.paymentInstructions, 'Pix do condomínio')
 })
+
+test('horário de funcionamento: rótulo e mesma regra do backend, inclusive passando da meia-noite', async () => {
+  const { operatingHoursError, operatingHoursLabel } = await import('../src/services/reservasApi.js')
+  assert.equal(operatingHoursLabel('06:00', '22:00'), '06:00 às 22:00')
+  assert.equal(operatingHoursLabel('08:00', '02:00'), '08:00 às 02:00 do dia seguinte')
+  const dia = toArea({ id: 'p', nome: 'Piscina', reservavel: true, ativo: true, horarioAbertura: '06:00:00', horarioFechamento: '22:00:00' })
+  assert.equal(dia.hours, '06:00 às 22:00')
+  assert.equal(operatingHoursError(dia, { date: '2099-12-20', startTime: '10:00', endTime: '12:00' }), '')
+  assert.match(operatingHoursError(dia, { date: '2099-12-20', startTime: '21:00', endTime: '23:00' }), /06:00 às 22:00/)
+
+  const noite = toArea({ id: 's', nome: 'Salão', reservavel: true, ativo: true, horarioAbertura: '08:00', horarioFechamento: '02:00' })
+  assert.equal(operatingHoursError(noite, { date: '2099-12-20', endDate: '2099-12-21', startTime: '22:00', endTime: '01:00' }), '')
+  assert.equal(operatingHoursError(noite, { date: '2099-12-31', endDate: '', startTime: '00:30', endTime: '01:30' }), '')
+  assert.notEqual(operatingHoursError(noite, { date: '2099-12-20', startTime: '01:00', endTime: '03:00' }), '')
+  assert.notEqual(operatingHoursError(noite, { date: '2099-12-20', startTime: '07:00', endTime: '09:00' }), '')
+  // Sem horário definido, sem restrição
+  assert.equal(operatingHoursError(toArea({ id: 'q', nome: 'Quadra', reservavel: true, ativo: true }), { date: '2099-12-20', startTime: '00:00', endTime: '23:45' }), '')
+})

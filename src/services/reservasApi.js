@@ -67,6 +67,9 @@ export function toArea(area) {
     fee: area.taxa != null ? formatFee(area.taxa) : '',
     feeValue: area.taxa != null ? String(area.taxa).replace('.', ',') : '',
     paymentInstructions: area.instrucoesPagamento || '',
+    openTime: hhmm(area.horarioAbertura),
+    closeTime: hhmm(area.horarioFechamento),
+    hours: operatingHoursLabel(hhmm(area.horarioAbertura), hhmm(area.horarioFechamento)),
     status: area.ativo === false ? 'INATIVO' : 'ATIVO',
   }
 }
@@ -127,6 +130,31 @@ export async function solicitarReserva(form, areas, options) {
   const area = areas.find((item) => item.name === form.area)
   if (!area) throw new ApiError(400, 'Selecione uma área comum disponível.')
   return apiPost('/interativo/reservas', { areaId: area.id, dataReserva: form.date, horarioInicio: form.startTime, horarioFim: form.endTime, dataFim: form.endDate || form.date }, options)
+}
+
+// "08:00 às 22:00" ou "08:00 às 02:00 do dia seguinte"; vazio = sem horário definido
+export function operatingHoursLabel(openTime, closeTime) {
+  if (!openTime || !closeTime) return ''
+  return `${openTime} às ${closeTime}${closeTime > openTime ? '' : ' do dia seguinte'}`
+}
+
+const addDays = (date, days) => {
+  const value = new Date(`${date}T12:00:00`)
+  value.setDate(value.getDate() + days)
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+}
+
+// Mesma regra do backend: o período cabe no funcionamento do dia ou, se ele passa da meia-noite, no da véspera
+export function operatingHoursError(area, candidate) {
+  if (!area?.openTime || !area?.closeTime || !candidate.date || !candidate.startTime || !candidate.endTime) return ''
+  const { start, end } = reservationPeriod(candidate)
+  const overnight = area.closeTime <= area.openTime
+  const fits = [addDays(candidate.date, -1), candidate.date].some((day) => {
+    const opens = `${day}T${area.openTime}`
+    const closes = `${overnight ? addDays(day, 1) : day}T${area.closeTime}`
+    return start >= opens && end <= closes
+  })
+  return fits ? '' : `Fora do horário de funcionamento da área (${area.hours}).`
 }
 
 // PAGAMENTO_CONFIRMADO: a administração confirma o pagamento manual de uma área paga
