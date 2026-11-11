@@ -9,6 +9,10 @@ export function areaBody(form) {
   const capacityText = String(form.capacity ?? '').trim()
   const capacity = capacityText ? Number(capacityText) : null
   if (capacity !== null && (!Number.isInteger(capacity) || capacity < 1)) throw new ApiError(400, 'A capacidade deve ser um número inteiro maior que zero.')
+  // Taxa de uso em reais (vírgula ou ponto); vazia ou zero = gratuita. Só vale para área reservável.
+  const feeText = String(form.feeValue ?? '').trim().replace(',', '.')
+  const fee = bookable && feeText ? Number(feeText) : null
+  if (fee !== null && (!Number.isFinite(fee) || fee < 0 || Math.round(fee * 100) !== fee * 100)) throw new ApiError(400, 'A taxa deve ser um valor em reais, com até 2 casas decimais.')
   return {
     nome: name,
     descricao: String(form.description || '').trim() || null,
@@ -16,6 +20,8 @@ export function areaBody(form) {
     reservavel: bookable,
     exigeAprovacao: bookable && Boolean(form.requiresApproval),
     capacidade: capacity,
+    taxa: fee || null,
+    instrucoesPagamento: fee ? String(form.paymentInstructions || '').trim() || null : null,
   }
 }
 

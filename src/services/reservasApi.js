@@ -45,6 +45,10 @@ export function toReservation(reserva, now = new Date()) {
     startTime: hhmm(reserva.horarioInicio),
     endTime: hhmm(reserva.horarioFim),
     approvedBy: reserva.aprovadorNome || '',
+    // Área paga: valor cobrado, como pagar e quem confirmou o pagamento manual
+    fee: reserva.valorTaxa != null ? formatFee(reserva.valorTaxa) : '',
+    paymentInstructions: reserva.instrucoesPagamento || '',
+    paidBy: reserva.pagamentoConfirmadoPorNome || '',
     status: reservationEffectiveStatus(status, reserva.dataFim || reserva.dataReserva, reserva.horarioFim, now),
   }
 }
@@ -60,6 +64,9 @@ export function toArea(area) {
     requiresApproval: Boolean(area.exigeAprovacao),
     active: area.ativo !== false,
     capacity: area.capacidade ?? null,
+    fee: area.taxa != null ? formatFee(area.taxa) : '',
+    feeValue: area.taxa != null ? String(area.taxa).replace('.', ',') : '',
+    paymentInstructions: area.instrucoesPagamento || '',
     status: area.ativo === false ? 'INATIVO' : 'ATIVO',
   }
 }
@@ -122,7 +129,13 @@ export async function solicitarReserva(form, areas, options) {
   return apiPost('/interativo/reservas', { areaId: area.id, dataReserva: form.date, horarioInicio: form.startTime, horarioFim: form.endTime, dataFim: form.endDate || form.date }, options)
 }
 
-const statusRoutes = { CANCELADA: 'cancelar', CONFIRMADA: 'aprovar', RECUSADA: 'recusar' }
+// PAGAMENTO_CONFIRMADO: a administração confirma o pagamento manual de uma área paga
+const statusRoutes = { CANCELADA: 'cancelar', CONFIRMADA: 'aprovar', RECUSADA: 'recusar', PAGAMENTO_CONFIRMADO: 'confirmar-pagamento' }
+
+// 150 -> "R$ 150,00"
+export function formatFee(value) {
+  return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
 
 export function alterarStatusReserva(id, status, options) {
   const route = statusRoutes[status]

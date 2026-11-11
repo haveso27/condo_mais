@@ -14,9 +14,9 @@ globalThis.window = new EventTarget()
 
 test('formulário vira AreaComumDTO; aprovação só para área reservável', () => {
   assert.deepEqual(areaBody({ name: ' Salão ', description: ' ', rules: 'Até 23h', capacity: '80', bookable: true, requiresApproval: true }),
-    { nome: 'Salão', descricao: null, regras: 'Até 23h', reservavel: true, exigeAprovacao: true, capacidade: 80 })
+    { nome: 'Salão', descricao: null, regras: 'Até 23h', reservavel: true, exigeAprovacao: true, capacidade: 80, taxa: null, instrucoesPagamento: null })
   assert.deepEqual(areaBody({ name: 'Piscina', requiresApproval: true }),
-    { nome: 'Piscina', descricao: null, regras: null, reservavel: false, exigeAprovacao: false, capacidade: null })
+    { nome: 'Piscina', descricao: null, regras: null, reservavel: false, exigeAprovacao: false, capacidade: null, taxa: null, instrucoesPagamento: null })
   assert.throws(() => areaBody({ name: ' ' }), (error) => error.status === 400)
   for (const capacity of ['0', '-3', '2.5', 'muitas']) assert.throws(() => areaBody({ name: 'X', capacity }), (error) => error.status === 400, capacity)
 })
@@ -66,4 +66,14 @@ test('a tela de áreas comuns aparece no menu do admin e lista as áreas de demo
   } finally {
     await server.close()
   }
+})
+
+test('taxa da área: vírgula ou ponto, vazia ou zero = gratuita, só para área reservável', () => {
+  assert.deepEqual([areaBody({ name: 'Salão', bookable: true, feeValue: '150,50', paymentInstructions: ' Pix ' }).taxa, areaBody({ name: 'Salão', bookable: true, feeValue: '150,50', paymentInstructions: ' Pix ' }).instrucoesPagamento], [150.5, 'Pix'])
+  assert.equal(areaBody({ name: 'Quadra', bookable: true, feeValue: '' }).taxa, null)
+  assert.equal(areaBody({ name: 'Quadra', bookable: true, feeValue: '0' }).taxa, null)
+  // Área que não é reservável não cobra nem guarda instruções
+  assert.deepEqual([areaBody({ name: 'Hall', bookable: false, feeValue: '10', paymentInstructions: 'x' }).taxa, areaBody({ name: 'Hall', bookable: false, feeValue: '10', paymentInstructions: 'x' }).instrucoesPagamento], [null, null])
+  assert.throws(() => areaBody({ name: 'Salão', bookable: true, feeValue: '-1' }), (error) => error.status === 400)
+  assert.throws(() => areaBody({ name: 'Salão', bookable: true, feeValue: '10,555' }), (error) => error.status === 400)
 })

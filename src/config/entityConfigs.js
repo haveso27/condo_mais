@@ -44,8 +44,8 @@ export const entityConfigs = {
   areasComuns: {
     collection: 'areas', title: 'Áreas comuns', subtitle: 'Cadastre as áreas do condomínio e defina quais podem ser reservadas pelos moradores.', action: 'Nova área comum', empty: 'Nenhuma área comum encontrada.',
     tabs: [['Todas', []], ['Ativas', ['ATIVO']], ['Inativas', ['INATIVO']]],
-    columns: [['Área', 'name', 'description'], ['Reservável', 'bookable'], ['Exige aprovação', 'requiresApproval'], ['Capacidade', 'capacity'], ['Status', 'status']],
-    fields: [{ key: 'name', label: 'Nome', required: true }, { key: 'capacity', label: 'Capacidade (pessoas)', type: 'number', placeholder: 'Opcional' }, { key: 'description', label: 'Descrição', type: 'textarea' }, { key: 'rules', label: 'Regras de uso', type: 'textarea', placeholder: 'Ex.: horário máximo, limpeza após o uso' }, { key: 'bookable', label: 'Moradores podem reservar', type: 'checkbox' }, { key: 'requiresApproval', label: 'Reserva de inquilino precisa de aprovação (proprietário ou administração)', type: 'checkbox' }],
+    columns: [['Área', 'name', 'description'], ['Reservável', 'bookable'], ['Exige aprovação', 'requiresApproval'], ['Taxa', 'fee'], ['Capacidade', 'capacity'], ['Status', 'status']],
+    fields: [{ key: 'name', label: 'Nome', required: true }, { key: 'capacity', label: 'Capacidade (pessoas)', type: 'number', placeholder: 'Opcional' }, { key: 'description', label: 'Descrição', type: 'textarea' }, { key: 'rules', label: 'Regras de uso', type: 'textarea', placeholder: 'Ex.: horário máximo, limpeza após o uso' }, { key: 'bookable', label: 'Moradores podem reservar', type: 'checkbox' }, { key: 'requiresApproval', label: 'Reserva de inquilino precisa de aprovação (proprietário ou administração)', type: 'checkbox' }, { key: 'feeValue', label: 'Taxa de uso em R$ (vazia = gratuita)', placeholder: 'Ex.: 150,00' }, { key: 'paymentInstructions', label: 'Como pagar (opcional)', type: 'textarea', placeholder: 'Ex.: Pix do condomínio; envie o comprovante à administração' }],
   },
   unidades: {
     collection: 'units', title: 'Unidades', subtitle: 'Gerencie as unidades do condomínio.', action: 'Nova unidade', empty: 'Nenhuma unidade encontrada.',
@@ -60,8 +60,8 @@ export const entityConfigs = {
   },
   reservas: {
     collection: 'reservations', title: 'Reservas', subtitle: 'Consulte e gerencie excepcionalmente as reservas.', empty: 'Nenhuma reserva encontrada.',
-    tabs: [['Todas', []], ['Pendentes', ['AGUARDANDO_APROVACAO']], ['Confirmadas', ['CONFIRMADA']], ['Concluídas', ['CONCLUIDA']], ['Canceladas', ['CANCELADA', 'RECUSADA']]],
-    columns: [['Área', 'area'], ['Morador', 'resident'], ['Unidade', 'unit', 'tower'], ['Data', 'date', 'endDate'], ['Horário', 'startTime', 'endTime'], ['Status', 'status']], fields: [],
+    tabs: [['Todas', []], ['Pendentes', ['AGUARDANDO_APROVACAO']], ['Aguardando pagamento', ['AGUARDANDO_PAGAMENTO']], ['Confirmadas', ['CONFIRMADA']], ['Concluídas', ['CONCLUIDA']], ['Canceladas', ['CANCELADA', 'RECUSADA']]],
+    columns: [['Área', 'area'], ['Morador', 'resident'], ['Unidade', 'unit', 'tower'], ['Data', 'date', 'endDate'], ['Horário', 'startTime', 'endTime'], ['Taxa', 'fee'], ['Status', 'status']], fields: [],
   },
   visitantesAdmin: {
     collection: 'visitors', title: 'Visitantes', subtitle: 'Consulte o histórico de acessos de visitantes.', empty: 'Nenhum visitante encontrado.',
