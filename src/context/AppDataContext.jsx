@@ -8,7 +8,7 @@ import { avisosService } from '../services/avisosService'
 import { equipeService, moradoresService, unidadesService } from '../services/cadastrosService'
 import { chamadosService } from '../services/chamadosService'
 import { encomendasService } from '../services/encomendasService'
-import { carregarEncomendas, registrarEncomenda, registrarRetiradaEncomenda } from '../services/encomendasApi'
+import { carregarEncomendas, pickupBody, registrarEncomenda, registrarRetiradaEncomenda } from '../services/encomendasApi'
 import { carregarComunicados, excluirComunicado, salvarComunicado } from '../services/comunicadosApi'
 import { alterarStatusReserva, carregarAreasComuns, carregarReservas, solicitarReserva } from '../services/reservasApi'
 import { abrirChamado, atualizarChamado, carregarCategoriasChamado, carregarChamado, carregarChamados, comentarChamado } from '../services/chamadosApi'
@@ -186,7 +186,7 @@ export function AppDataProvider({ children }) {
     saveStaffRemote: (form, editingId) => command(() => salvarUsuarioEquipe(form, editingId)),
     setStaffStatusRemote: (id, status) => command(() => alterarStatusMorador(id, status)),
     addPackageRemote: (form) => collectionCommand('packages', () => registrarEncomenda(form, dataRef.current.units)),
-    withdrawPackageRemote: (id) => collectionCommand('packages', () => registrarRetiradaEncomenda(id)),
+    withdrawPackageRemote: (record, pickup) => collectionCommand('packages', () => registrarRetiradaEncomenda(record.id, pickupBody(record, pickup, dataRef.current.units))),
     saveNoticeRemote: (form, editingId) => collectionCommand('notices', () => salvarComunicado(form, editingId, dataRef.current.towers, dataRef.current.tickets)),
     deleteNoticeRemote: (id) => collectionCommand('notices', () => excluirComunicado(id)),
     addReservationRemote: (form) => collectionCommand('reservations', () => solicitarReserva(form, dataRef.current.areas)),

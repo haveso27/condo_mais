@@ -50,6 +50,19 @@ function mentionHint(content, tickets = []) {
   return `Você pode mencionar um chamado digitando @ e o código dele (ex.: @3F2A1C9E).${found.length ? ` Menções: ${found.join('; ')}.` : ''}`
 }
 
+// Retirada de encomenda: o nome de quem retira sempre; sem destinatário, o código que a pessoa apresentou e o
+// apartamento informado por ela (o backend confere o código e recusa se não bater)
+function PickupFields({ record, values, towers, units, onChange }) {
+  const unitOptions = (units || []).filter((unit) => (unit.tower || '') === (values.tower || '')).map((unit) => unit.number).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }))
+  const fields = [{ key: 'name', label: 'Nome de quem está retirando', required: true }]
+  if (record?.noRecipient) {
+    fields.push({ key: 'code', label: 'Código apresentado pela pessoa', required: true, placeholder: 'Confira também com a etiqueta da embalagem' })
+    if (towers.length) fields.push({ key: 'tower', label: 'Torre / Bloco informado', type: 'select', options: towers, required: true })
+    fields.push({ key: 'unit', label: 'Apartamento informado', type: 'search', options: unitOptions, required: true, placeholder: 'Digite para buscar a unidade' })
+  }
+  return <div className="confirm-extra"><DynamicForm fields={fields} values={values} onChange={onChange} columns={false} /></div>
+}
+
 function validate(fields, values) {
   const missing = fields.find((field) => field.required && !String(values[field.key] ?? '').trim())
   if (missing) return `Preencha o campo “${missing.label}”.`
@@ -84,6 +97,8 @@ function EntityModule({ role, type }) {
   const [pendingAction, setPendingAction] = useState(null)
   const [comment, setComment] = useState('')
   const [solution, setSolution] = useState('')
+  const [pickup, setPickup] = useState({})
+  const [pickupError, setPickupError] = useState('')
   const remotePackages = remoteMode && config.collection === 'packages'
   const remoteNotices = remoteMode && config.collection === 'notices'
   const remoteReservations = remoteMode && config.collection === 'reservations'
@@ -115,6 +130,11 @@ function EntityModule({ role, type }) {
         if ((remotePackages || remoteVisitors) && field.key === 'unit') return { ...field, type: 'search', options: packageUnitOptions, placeholder: 'Digite para buscar a unidade' }
         return field
       })
+      // Encomenda sem destinatário identificado: a portaria marca e registra sem torre e apartamento
+      .filter((field) => !(remotePackages && form.noRecipient && ['tower', 'unit'].includes(field.key)))
+      .flatMap((field) => remotePackages && role === 'portaria' && field.key === 'code'
+        ? [{ key: 'noRecipient', label: 'Destinatário não identificado (sem apartamento na etiqueta)', type: 'checkbox' }, field]
+        : [field])
       // Comunicado do admin: pode se referir a um chamado, pelo campo ou mencionando @código no texto
       .flatMap((field) => remoteNotices && role === 'admin' && field.key === 'content'
         ? [{ ...field, hint: mentionHint(form.content, data.tickets) }, { key: 'ticket', label: 'Chamado relacionado (opcional)', type: 'search', options: (data.tickets || []).map(ticketOption), placeholder: 'Busque pelo código ou pelo título' }]
@@ -204,10 +224,10 @@ function EntityModule({ role, type }) {
       return
     }
     if (remotePackages) {
-      const validation = validate(fields, form) || (findPackageUnit(data.units, form) ? '' : 'Selecione uma unidade existente nesta Torre / Bloco.')
+      const validation = validate(fields, form) || (form.noRecipient || findPackageUnit(data.units, form) ? '' : 'Selecione uma unidade existente nesta Torre / Bloco.')
       if (validation) { setError(validation); return }
       const ok = await runRemote(() => actions.addPackageRemote(form), setError)
-      if (ok) { setOpen(false); flash('Encomenda registrada. Ela já aparece para a unidade.') }
+      if (ok) { setOpen(false); flash(form.noRecipient ? 'Encomenda registrada sem destinatário. Localize pelo código na retirada.' : 'Encomenda registrada. Ela já aparece para a unidade.') }
       return
     }
     if (remoteMode) {
@@ -300,9 +320,11 @@ function EntityModule({ role, type }) {
       return
     }
     if (remotePackages && action === 'package') {
-      const ok = await runRemote(() => actions.withdrawPackageRemote(record.id), (message) => { setPendingAction(null); flash(message) })
+      // Erro de conferência ou de campo fica no diálogo, com os dados preenchidos, para corrigir e tentar de novo
+      const ok = await runRemote(() => actions.withdrawPackageRemote(record, pickup), setPickupError)
       if (!ok) return
       setPendingAction(null)
+      setPickup({})
       setDetails(null)
       flash('Retirada registrada.')
       return
@@ -404,7 +426,7 @@ function EntityModule({ role, type }) {
     </section>
     <Modal open={open} title={editing ? `Editar ${config.title.toLowerCase()}` : config.action || 'Novo registro'} onClose={() => setOpen(false)} onConfirm={saveRecord} confirmLabel={busy ? 'Salvando...' : editing ? 'Salvar alterações' : (type.includes('encomendas') ? 'Registrar' : 'Salvar')}><DynamicForm fields={fields} values={form} onChange={(key, value) => { setForm((current) => ({ ...current, [key]: value, ...((remotePackages || remoteVisitors) && key === 'tower' ? { unit: '' } : {}) })); setError('') }} error={error} /></Modal>
     <Modal open={Boolean(details)} title={details ? `Detalhes · ${details.code || (isUuid(details.id) ? details.title || details.name || '' : details.id)}` : 'Detalhes'} onClose={() => setDetails(null)} ><RecordDetails record={details} collection={config.collection} />{details && <div className="detail-actions">{detailActions(details)}</div>}{details && config.collection === 'tickets' && !(remoteTickets && details.status === 'ENCERRADO') && <div className="comment-box"><label>Adicionar comentário<textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Descreva a atualização" /></label><button className="secondary-button" disabled={!comment.trim() || busy} onClick={() => { if (remoteTickets) { addRemoteComment(); return } actions.updateTicket(details.id, { comments: [...(details.comments || []), comment] }); setDetails({ ...details, comments: [...(details.comments || []), comment] }); setComment(''); flash('Comentário adicionado.') }}>Adicionar comentário</button></div>}</Modal>
-    <ConfirmDialog open={Boolean(pendingAction)} title={pendingAction?.label} message={confirmationMessage(pendingAction?.record, pendingAction?.label, pendingAction?.status)} destructive={['RECUSADO', 'CANCELADA', 'ENCERRADO', 'INATIVO', 'EXCLUIDA', 'EXCLUIDO', 'AREA_INATIVA'].includes(pendingAction?.status)} confirmLabel={busy ? 'Aguarde...' : pendingAction?.label || 'Confirmar'} onCancel={() => { setPendingAction(null); setSolution('') }} onConfirm={confirmAction}>{pendingAction?.action === 'ticket' && pendingAction?.status === 'RESOLVIDO' && <label className="confirm-extra">Solução aplicada (opcional)<textarea value={solution} onChange={(event) => setSolution(event.target.value)} placeholder="Ex.: disjuntor trocado pela empresa de manutenção" /></label>}</ConfirmDialog>
+    <ConfirmDialog open={Boolean(pendingAction)} title={pendingAction?.label} message={confirmationMessage(pendingAction?.record, pendingAction?.label, pendingAction?.status)} destructive={['RECUSADO', 'CANCELADA', 'ENCERRADO', 'INATIVO', 'EXCLUIDA', 'EXCLUIDO', 'AREA_INATIVA'].includes(pendingAction?.status)} confirmLabel={busy ? 'Aguarde...' : pendingAction?.label || 'Confirmar'} onCancel={() => { setPendingAction(null); setSolution(''); setPickup({}); setPickupError('') }} onConfirm={confirmAction} error={pendingAction?.action === 'package' ? pickupError : ''}>{remotePackages && pendingAction?.action === 'package' && <PickupFields record={pendingAction.record} values={pickup} towers={towerNames} units={data.units} onChange={(key, value) => { setPickup((current) => ({ ...current, [key]: value })); setPickupError('') }} />}{pendingAction?.action === 'ticket' && pendingAction?.status === 'RESOLVIDO' && <label className="confirm-extra">Solução aplicada (opcional)<textarea value={solution} onChange={(event) => setSolution(event.target.value)} placeholder="Ex.: disjuntor trocado pela empresa de manutenção" /></label>}</ConfirmDialog>
     <Modal open={Boolean(towerForm)} title="Nova torre" onClose={() => setTowerForm(null)} onConfirm={async () => { const ok = await runRemote(() => actions.createTower(towerForm.name), setError); if (ok) { setTowerForm(null); flash('Torre cadastrada.') } }} confirmLabel={busy ? 'Salvando...' : 'Salvar'}><DynamicForm fields={[{ key: 'name', label: 'Nome da torre / bloco', required: true }]} values={towerForm || {}} onChange={(key, value) => { setTowerForm((current) => ({ ...current, [key]: value })); setError('') }} error={towerForm ? error : ''} columns={false} /></Modal>
     <div role="status" aria-live="polite" aria-atomic="true">{saved && <div className="toast">{saved}</div>}</div>
   </DesktopLayout>

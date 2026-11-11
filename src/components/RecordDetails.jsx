@@ -9,7 +9,7 @@ const labels = {
   entryAt: 'Entrada registrada em', exitAt: 'Saída registrada em', company: 'Empresa', service: 'Serviço',
   location: 'Local', receivedAt: 'Recebida em', withdrawnAt: 'Retirada em', doorman: 'Porteiro', code: 'Código', closedAt: 'Encerrado em', provider: 'Prestador / responsável externo', providerContact: 'Contato do prestador', forecast: 'Previsão de atendimento', withdrawnBy: 'Entregue por',
   area: 'Área comum', requestedByOwner: 'Solicitação feita por proprietário', isOwner: 'É proprietário',
-  authorized: 'Autorização prévia', title: 'Título', content: 'Conteúdo', ticketSummary: 'Chamado relacionado', priority: 'Prioridade',
+  pickedUpBy: 'Retirada por', informedUnit: 'Apartamento informado na retirada', authorized: 'Autorização prévia', title: 'Título', content: 'Conteúdo', ticketSummary: 'Chamado relacionado', priority: 'Prioridade',
   destination: 'Destino', description: 'Descrição', category: 'Categoria', openedAt: 'Aberto em',
   type: 'Operação', reference: 'Referência', user: 'Registrado por', timestamp: 'Data e hora do evento', author: 'Publicado por', approvedBy: 'Aprovada / recusada por', doormanIn: 'Entrada registrada por', bookable: 'Moradores podem reservar', requiresApproval: 'Exige aprovação', capacity: 'Capacidade (pessoas)', rules: 'Regras de uso', doormanOut: 'Saída registrada por', role: 'Perfil', pendingFirstAccess: 'Primeiro acesso pendente',
 }
@@ -18,7 +18,7 @@ const labels = {
 export const detailFields = {
   visitors: ['id', 'name', 'cpf', 'phone', 'tower', 'unit', 'resident', 'startDate', 'startTime', 'endDate', 'endTime', 'status', 'source', 'entryAt', 'doormanIn', 'exitAt', 'doormanOut', 'notes'],
   providers: ['id', 'name', 'cpf', 'company', 'service', 'tower', 'location', 'date', 'time', 'status', 'entryAt', 'exitAt', 'notes'],
-  packages: ['code', 'resident', 'tower', 'unit', 'receivedAt', 'doorman', 'status', 'withdrawnAt', 'withdrawnBy', 'notes'],
+  packages: ['code', 'resident', 'tower', 'unit', 'receivedAt', 'doorman', 'status', 'withdrawnAt', 'withdrawnBy', 'pickedUpBy', 'informedUnit', 'notes'],
   reservations: ['id', 'area', 'resident', 'tower', 'unit', 'date', 'startTime', 'endDate', 'endTime', 'status', 'requestedByOwner', 'approvedBy', 'notes'],
   tickets: ['id', 'code', 'title', 'description', 'category', 'location', 'resident', 'priority', 'status', 'openedAt', 'closedAt', 'provider', 'providerContact', 'forecast', 'notes'],
   notices: ['id', 'title', 'content', 'ticketSummary', 'priority', 'destination', 'tower', 'startDate', 'endDate', 'author', 'status'],

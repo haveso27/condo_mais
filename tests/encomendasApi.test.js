@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { setToken } from '../src/services/api.js'
-import { carregarEncomendas, findPackageUnit, packageTimeLabel, registrarEncomenda, registrarRetiradaEncomenda, toPackage } from '../src/services/encomendasApi.js'
+import { NO_RECIPIENT, carregarEncomendas, findPackageUnit, packageTimeLabel, pickupBody, registrarEncomenda, registrarRetiradaEncomenda, toPackage } from '../src/services/encomendasApi.js'
 import { sameUnit } from '../src/services/serviceUtils.js'
 
 // sessionStorage mínimo para o Node
@@ -31,8 +31,8 @@ const dto = {
 test('encomenda da API vira encomenda da tela, com status no formato das abas', () => {
   const pkg = toPackage(dto, new Date('2026-10-27T18:00:00'))
   assert.deepEqual(pkg, {
-    id: 'e-1', code: 'BR123', resident: 'Carla Souza', tower: 'Torre A', unit: '101', unitId: 'a-101',
-    receivedAt: 'Hoje · 14:32', doorman: 'João', status: 'AGUARDANDO_RETIRADA', withdrawnAt: '', withdrawnBy: '', notes: 'Caixa média',
+    id: 'e-1', code: 'BR123', noRecipient: false, resident: 'Carla Souza', tower: 'Torre A', unit: '101', unitId: 'a-101',
+    receivedAt: 'Hoje · 14:32', doorman: 'João', status: 'AGUARDANDO_RETIRADA', withdrawnAt: '', withdrawnBy: '', pickedUpBy: '', informedUnit: '', notes: 'Caixa média',
   })
   const retirada = toPackage({ ...dto, status: 'RETIRADA', dataHoraRetirada: '2026-10-28T09:05:00', porteiroRetiradaNome: 'Maria', torreNome: null, moradorNome: null }, new Date('2026-10-28T10:00:00'))
   assert.equal(retirada.status, 'RETIRADA')
@@ -73,9 +73,10 @@ test('registrar encomenda envia unidade, código e observação; retirada usa PU
   assert.equal(calls[0].init.method, 'POST')
   assert.deepEqual(JSON.parse(calls[0].init.body), { apartamentoId: 'a-101', codigoIdentificacao: 'BR123', observacao: null })
 
-  await registrarRetiradaEncomenda('e-1', { fetchImpl })
+  await registrarRetiradaEncomenda('e-1', { retiranteNome: 'Carla' }, { fetchImpl })
   assert.equal(calls[1].init.method, 'PUT')
   assert.equal(calls[1].url.endsWith('/portaria/encomendas/e-1/retirada'), true)
+  assert.deepEqual(JSON.parse(calls[1].init.body), { retiranteNome: 'Carla' })
 
   await assert.rejects(registrarEncomenda({ tower: 'Torre A', unit: '999', code: 'X' }, units, { fetchImpl }), (error) => error.status === 400 && /unidade existente/.test(error.message))
   await assert.rejects(registrarEncomenda({ tower: 'Torre A', unit: '101', code: ' ' }, units, { fetchImpl }), (error) => error.status === 400 && /código/.test(error.message))
@@ -88,4 +89,28 @@ test('mesma unidade: compara torre e número; sem torre, só o número', () => {
   assert.equal(sameUnit({ tower: '', unit: '12' }, { tower: '', unit: '12' }), true)
   assert.equal(sameUnit({ tower: 'Torre A', unit: '12' }, { tower: '', unit: '12' }), false)
   assert.equal(sameUnit({ tower: '', unit: '' }, { tower: '', unit: '' }), false)
+})
+
+test('encomenda sem destinatário: registro sem unidade, retirada com nome, código e apartamento informado', async () => {
+  setToken('token')
+  const units = [{ id: 'a-101', tower: 'Torre A', number: '101' }, { id: 'a-202', tower: 'Torre A', number: '202' }]
+  const { fetchImpl, calls } = fakeFetch([['/recebimento', 200, dto]])
+  await registrarEncomenda({ noRecipient: true, tower: 'Torre A', unit: '999', code: 'BR777', notes: 'Caixa marrom' }, units, { fetchImpl })
+  assert.deepEqual(JSON.parse(calls[0].init.body), { apartamentoId: null, codigoIdentificacao: 'BR777', observacao: 'Caixa marrom' })
+
+  // Na tela: sem destinatário e, depois da retirada, quem retirou e de qual apartamento disse ser
+  const sem = toPackage({ ...dto, semDestinatario: true, apartamentoId: null, apartamentoNumero: null, torreNome: null, moradorNome: null,
+    status: 'RETIRADA', retiranteNome: 'Maria', retiranteApartamentoNumero: '202', retiranteTorreNome: 'Torre A' })
+  assert.equal(sem.noRecipient, true)
+  assert.equal(sem.resident, NO_RECIPIENT)
+  assert.equal(sem.pickedUpBy, 'Maria')
+  assert.equal(sem.informedUnit, '202 · Torre A')
+
+  // Corpo da retirada: com unidade, só o nome; sem destinatário, também código e apartamento informado
+  assert.deepEqual(pickupBody({ noRecipient: false }, { name: ' Carla ' }, units), { retiranteNome: 'Carla', codigoConferencia: null, apartamentoInformadoId: null })
+  assert.deepEqual(pickupBody({ noRecipient: true }, { name: 'Maria', code: ' BR777 ', tower: 'Torre A', unit: '202' }, units),
+    { retiranteNome: 'Maria', codigoConferencia: 'BR777', apartamentoInformadoId: 'a-202' })
+  assert.throws(() => pickupBody({ noRecipient: false }, { name: ' ' }, units), (error) => error.status === 400)
+  assert.throws(() => pickupBody({ noRecipient: true }, { name: 'Maria', tower: 'Torre A', unit: '202' }, units), (error) => /código/.test(error.message))
+  assert.throws(() => pickupBody({ noRecipient: true }, { name: 'Maria', code: 'BR777', tower: 'Torre A', unit: '999' }, units), (error) => /apartamento/.test(error.message))
 })
