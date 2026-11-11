@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { setToken } from '../src/services/api.js'
-import { TICKET_COMMON_AREA, atualizarChamado, carregarChamados, comentarChamado, ticketBody, ticketUnitLabel, toTicket } from '../src/services/chamadosApi.js'
+import { TICKET_COMMON_AREA, atualizarChamado, carregarChamados, comentarChamado, ticketBody, ticketNextStatuses, ticketUnitLabel, toTicket } from '../src/services/chamadosApi.js'
 
 const storage = new Map()
 globalThis.sessionStorage = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)), removeItem: (key) => storage.delete(key) }
@@ -71,4 +71,10 @@ test('portaria sem acesso às ocorrências: o 403 vira lista vazia, os demais er
   const reply = (status) => async () => ({ ok: status < 400, status, json: async () => ({ mensagem: 'erro' }), text: async () => JSON.stringify({ mensagem: 'erro' }) })
   assert.deepEqual(await carregarChamados({ fetchImpl: reply(403) }), [])
   await assert.rejects(carregarChamados({ fetchImpl: reply(500) }), (error) => error.status === 500)
+})
+
+test('chamado resolvido não é reaberto: só pode ser encerrado', () => {
+  assert.deepEqual(ticketNextStatuses('RESOLVIDO'), ['ENCERRADO'])
+  assert.deepEqual(ticketNextStatuses('ABERTO'), ['EM_ANALISE', 'EM_ATENDIMENTO', 'RESOLVIDO', 'ENCERRADO'])
+  assert.deepEqual(ticketNextStatuses('EM_ANALISE'), ['EM_ATENDIMENTO', 'RESOLVIDO', 'ENCERRADO'])
 })

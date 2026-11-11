@@ -93,6 +93,12 @@ export function abrirChamado(form, lookups, options) {
 }
 
 // Andamento pela administração: status (com _ ou espaço) e/ou nova categoria; o comentário vai junto ao histórico
+// Próximos status que a administração pode escolher: resolvido não é reaberto, só encerrado
+export function ticketNextStatuses(status) {
+  if (status === 'RESOLVIDO') return ['ENCERRADO']
+  return ['EM_ANALISE', 'EM_ATENDIMENTO', 'RESOLVIDO', 'ENCERRADO'].filter((next) => next !== status)
+}
+
 export function atualizarChamado(id, { status, categoryId, comment } = {}, options) {
   const body = { status: status || null, categoriaId: categoryId || null, comentario: String(comment || '').trim() || null }
   return apiPut(`/atendimento/chamados/${id}`, body, options)
