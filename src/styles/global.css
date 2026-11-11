@@ -651,3 +651,4 @@ button:disabled { cursor: not-allowed; opacity: .65; }
 .setup-warning { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 6px; background: #fff7df; color: #6b4a0a; font-size: 13px; }
 .setup-warning button { margin-left: auto; }
 .form-note--warning { background: #fff7df; color: #6b4a0a; }
+.setup-existing-towers { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: #f7f9f8; }.setup-existing-towers p { margin: 0; color: var(--muted); font-size: 13px; }

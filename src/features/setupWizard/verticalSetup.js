@@ -304,6 +304,20 @@ export const validateStep = (step, draft) => validateStepDetails(step, draft).ma
 // Corpo de POST /condominios/configuracao-inicial. Vão os parâmetros de cada torre, não a lista de
 // unidades: o backend gera os números com a mesma regra da prévia. O nome do condomínio não vai,
 // porque só a administração da plataforma (MASTER) altera nome e CNPJ.
+// Parâmetros de cada torre, como o backend espera (configuração inicial e torres novas pelo assistente)
+export function buildTowersPayload(towers) {
+  return towers.map((tower) => ({
+    nome: tower.name.trim(),
+    andares: strictInteger(tower.floorCount),
+    unidadesPorAndar: strictInteger(tower.unitsPerFloor),
+    andarInicial: strictInteger(tower.firstFloor),
+    sequenciaInicial: strictInteger(tower.firstUnit),
+    digitos: strictInteger(tower.unitDigits),
+    separador: tower.separator || '',
+    terreo: tower.ground || GROUND_WITHOUT_UNITS,
+  }))
+}
+
 export function buildSetupPayload(draft) {
   const area = (name, reservable) => ({ nome: name.trim(), descricao: null, reservavel: Boolean(reservable), exigeAprovacao: false, capacidade: null })
   return {
@@ -311,16 +325,7 @@ export function buildSetupPayload(draft) {
     endereco: draft.condominium.address.trim(),
     cidade: draft.condominium.city.trim(),
     estado: draft.condominium.state,
-    torres: draft.towers.map((tower) => ({
-      nome: tower.name.trim(),
-      andares: strictInteger(tower.floorCount),
-      unidadesPorAndar: strictInteger(tower.unitsPerFloor),
-      andarInicial: strictInteger(tower.firstFloor),
-      sequenciaInicial: strictInteger(tower.firstUnit),
-      digitos: strictInteger(tower.unitDigits),
-      separador: tower.separator || '',
-      terreo: tower.ground || GROUND_WITHOUT_UNITS,
-    })),
+    torres: buildTowersPayload(draft.towers),
     // As áreas sugeridas entram sem reserva; as personalizadas seguem a marcação feita na tela.
     // Reserva e aprovação podem ser ajustadas depois, no cadastro de áreas comuns.
     areasComuns: [
@@ -330,20 +335,31 @@ export function buildSetupPayload(draft) {
   }
 }
 
+// Sugestão de nome que também evita as torres já cadastradas (ao acrescentar torres pelo assistente)
+const suggestFor = (state, towers) => suggestTowerName([...(state.existingTowerNames || []).map((name) => ({ name })), ...towers])
+
 export function wizardReducer(state, action) {
   switch (action.type) {
+    case 'SET_EXISTING_TOWERS': {
+      // As torres do rascunho que ainda têm o nome sugerido de antes são renomeadas para não colidir
+      const existing = action.names || []
+      const taken = new Set(existing.map(normalized))
+      let towers = []
+      for (const tower of state.draft.towers) towers = [...towers, taken.has(normalized(tower.name)) ? { ...tower, name: suggestTowerName([...existing.map((name) => ({ name })), ...towers]) } : tower]
+      return { ...state, existingTowerNames: existing, draft: { ...state.draft, towers } }
+    }
     case 'UPDATE_CONDOMINIUM':
       return { ...state, draft: { ...state.draft, condominium: { ...state.draft.condominium, [action.field]: action.value } } }
     case 'ADD_TOWER': {
       const nextId = state.nextTowerId + 1
-      return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers: [...state.draft.towers, { ...createTower(`tower-${nextId}`), name: suggestTowerName(state.draft.towers) }] } }
+      return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers: [...state.draft.towers, { ...createTower(`tower-${nextId}`), name: suggestFor(state, state.draft.towers) }] } }
     }
     case 'DUPLICATE_TOWER': {
       const index = state.draft.towers.findIndex((tower) => tower.id === action.id)
       if (index < 0 || state.draft.towers.length >= MAX_TOWERS) return state
       const nextId = state.nextTowerId + 1
       // Só a configuração é copiada: a nova torre recebe identidade e nome próprios
-      const copy = { ...state.draft.towers[index], id: `tower-${nextId}`, name: suggestTowerName(state.draft.towers) }
+      const copy = { ...state.draft.towers[index], id: `tower-${nextId}`, name: suggestFor(state, state.draft.towers) }
       const towers = [...state.draft.towers, copy]
       return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers } }
     }
@@ -353,7 +369,7 @@ export function wizardReducer(state, action) {
       let nextId = state.nextTowerId
       while (towers.length < count) {
         nextId += 1
-        towers = [...towers, { ...createTower(`tower-${nextId}`), name: suggestTowerName(towers) }]
+        towers = [...towers, { ...createTower(`tower-${nextId}`), name: suggestFor(state, towers) }]
       }
       return { ...state, nextTowerId: nextId, draft: { ...state.draft, towers } }
     }
@@ -376,6 +392,26 @@ export function wizardReducer(state, action) {
     default:
       return state
   }
+}
+
+// Reexecução do assistente: só as etapas de torres, prévia e resumo, sem dados do condomínio nem áreas
+export const NEW_TOWERS_STEPS = ['Novas torres', 'Prévia das unidades', 'Resumo']
+
+export function createNewTowersState() {
+  return { step: 0, maxVisited: 0, nextTowerId: 1, reviewed: false, existingTowerNames: [], draft: { ...createInitialSetupDraft(), towers: [{ ...createTower(), name: suggestTowerName([]) }] } }
+}
+
+// Erros das etapas das torres novas: as mesmas validações do Wizard e nome que não repita uma torre existente
+export function validateNewTowersStep(step, state) {
+  const towers = state.draft.towers
+  if (step === 0 || step === 1) {
+    const taken = new Set((state.existingTowerNames || []).map(normalized))
+    const errors = [...validateTowerDetails(towers), ...towers.filter((tower) => taken.has(normalized(tower.name))).map((tower) => ({ field: `tower.${tower.id}.name`, message: `Já existe uma torre chamada “${tower.name.trim()}” no condomínio.` }))]
+    if (errors.length || step === 0) return errors
+    const duplicates = duplicateUnits(generateUnits(towers))
+    return duplicates.length ? [{ message: `Existem unidades duplicadas: ${duplicates.join(', ')}.` }] : []
+  }
+  return []
 }
 
 export function createInitialWizardState() {

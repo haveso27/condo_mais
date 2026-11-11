@@ -113,6 +113,7 @@ function fakeApi({ packages = [], packagesStatus = 200, me = { id: 'u-1', nome: 
       bookings = bookings.map((item) => item.id === id ? { ...item, status } : item)
       return reply(200, bookings.find((item) => item.id === id))
     }
+    if (path === '/condominios/torres/lote' && method === 'POST') return reply(201, { torres: 1, unidades: 6 })
     if (path === '/condominios/torres') return reply(200, [{ id: 't-a', nome: 'Torre A' }])
     if (path === '/condominios/apartamentos') return reply(200, [{ id: 'a-101', numero: '101', torreId: 't-a', status: 'OCUPADO' }])
     if (path === '/usuarios') return reply(403, {})
@@ -482,4 +483,32 @@ test('inquilino não vê aviso de aprovação nem botões de aprovar', async () 
   const list = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(ResidentListPage, { type: 'reservas' }))))
   fireEvent.click(await list.findByText('Salão de Festas'))
   assert.equal(list.queryByRole('button', { name: 'Aprovar' }), null)
+})
+
+test('admin acrescenta torres pelo assistente: sugere nome livre, recusa nome existente e envia só as novas', async () => {
+  const calls = fakeApi({ me: admin })
+  sessionStorage.setItem('condoplus.token', jwt({ perfil: 'ADMIN', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 }))
+  const { fireEvent } = await import('@testing-library/react')
+  const { MemoryRouter } = await import('react-router-dom')
+  const { default: NewTowersWizard } = await server.ssrLoadModule('/src/pages/desktop/NewTowersWizard.jsx')
+  const view = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(NewTowersWizard))))
+
+  // A torre existente aparece só para consulta, e a sugestão de nome já a evita
+  assert.ok(await view.findByText(/Torre A — continuam como estão/))
+  await waitFor(() => assert.equal(view.getByLabelText('Nome da torre').value, 'Torre B'))
+  const continuar = () => fireEvent.click(view.getByRole('button', { name: /Continuar/ }))
+
+  fireEvent.change(view.getByLabelText('Nome da torre'), { target: { value: 'torre a' } })
+  continuar()
+  assert.ok(view.getAllByText(/Já existe uma torre chamada “torre a”/).length > 0)
+  assert.equal(calls.some((call) => call.path === '/condominios/torres/lote'), false)
+
+  fireEvent.change(view.getByLabelText('Nome da torre'), { target: { value: 'Torre B' } })
+  fireEvent.change(view.getByLabelText('Térreo'), { target: { value: 'COM_APARTAMENTOS' } })
+  continuar() // torres -> prévia
+  continuar() // prévia -> resumo
+  fireEvent.click(view.getByRole('button', { name: /Adicionar torres/ }))
+  await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/condominios/torres/lote')))
+  const enviado = calls.find((call) => call.method === 'POST' && call.path === '/condominios/torres/lote').body
+  assert.deepEqual(enviado.torres.map((torre) => [torre.nome, torre.terreo]), [['Torre B', 'COM_APARTAMENTOS']])
 })

@@ -146,13 +146,14 @@ export function AppDataProvider({ children }) {
           staleError.status = 409
           throw staleError
         }
-        const { currentResident, condominiumName } = result.session
+        const { currentResident, condominiumName, condominiumModel } = result.session
         const operationalAllowed = ['operational', 'operational-error'].includes(result.status)
         operationalAuthorization.current = { allowed: operationalAllowed, token, sessionRequest: request }
         setData((current) => ({
           ...current,
           currentResident,
-          condominium: { ...current.condominium, name: condominiumName },
+          // O modelo (VERTICAL, HORIZONTAL, EDIFICIO) decide se o admin pode acrescentar torres pelo assistente
+          condominium: { ...current.condominium, name: condominiumName, model: condominiumModel || '' },
           ...(result.status === 'operational' ? result.operational : {}),
         }))
         setCadastrosStatus(result.status === 'operational-error'

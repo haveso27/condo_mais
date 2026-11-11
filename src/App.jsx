@@ -6,6 +6,7 @@ import DesktopDashboard from './pages/desktop/DesktopDashboard'
 import EntityPage from './pages/desktop/EntityPage'
 import AdminSettingsPage from './pages/desktop/AdminSettingsPage'
 import VerticalSetupWizardPage from './pages/desktop/VerticalSetupWizardExperience'
+import NewTowersWizard from './pages/desktop/NewTowersWizard'
 import AdminSetupAccessGate from './components/AdminSetupAccessGate'
 import SessionAccessGate from './components/SessionAccessGate'
 import { SESSION_AREA } from './features/session/sessionAccess'
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/admin/moradores" element={<EntityPage role="admin" type="moradores" />} />
         <Route path="/admin/equipe" element={<EntityPage role="admin" type="equipe" />} />
         <Route path="/admin/unidades" element={<EntityPage role="admin" type="unidades" />} />
+        <Route path="/admin/torres/novas" element={<NewTowersWizard />} />
         <Route path="/admin/encomendas" element={<EntityPage role="admin" type="encomendasAdmin" />} />
         <Route path="/admin/reservas" element={<EntityPage role="admin" type="reservas" />} />
         <Route path="/admin/areas-comuns" element={<EntityPage role="admin" type="areasComuns" />} />
