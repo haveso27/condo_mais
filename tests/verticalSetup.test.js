@@ -1,7 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  GROUND_WITH_UNITS,
   SETUP_LIMITS,
+  buildSetupPayload,
+  getTowerFloors,
   createInitialWizardState,
   createTower,
   duplicateUnits,
@@ -155,4 +158,26 @@ test('reducer adiciona e remove torres sem alterar as restantes', () => {
   assert.deepEqual(state.draft.towers.map((tower) => tower.name), ['Torre A', 'Torre B'])
   state = wizardReducer(state, { type: 'REMOVE_TOWER', id: 'tower-1' })
   assert.deepEqual(state.draft.towers.map((tower) => tower.name), ['Torre B'])
+})
+
+test('térreo com apartamentos: andar 0 além dos andares informados, com a mesma numeração', () => {
+  const tower = validTower({ floorCount: '2', unitsPerFloor: '2', ground: GROUND_WITH_UNITS })
+  assert.deepEqual(generateTowerUnits(tower).map((unit) => unit.number), ['001', '002', '101', '102', '201', '202'])
+  assert.equal(getTowerUnitCount(tower), 6)
+  assert.deepEqual(getTowerUnitPreview(tower), { total: 6, first: '001', last: '202' })
+  assert.deepEqual(getTowerFloors(tower).map((floor) => floor.floor), [0, 1, 2])
+  assert.deepEqual(generateTowerUnits({ ...tower, separator: '-' }).slice(0, 2).map((unit) => unit.number), ['0-01', '0-02'])
+  // Térreo sem apartamentos (padrão) e sem térreo residencial não geram nada no andar 0
+  for (const ground of [undefined, 'SEM_APARTAMENTOS', 'SEM_TERREO']) {
+    assert.deepEqual(generateTowerUnits({ ...tower, ground }).map((unit) => unit.number), ['101', '102', '201', '202'])
+  }
+})
+
+test('térreo vai no envio e conta no limite de unidades', () => {
+  const draft = { condominium: { name: 'X', address: 'Rua', city: 'Recife', state: 'PE' }, residentialModel: 'VERTICAL', commonAreas: [], customAreas: [],
+    towers: [validTower({ ground: GROUND_WITH_UNITS }), { ...validTower(), id: 'tower-b', name: 'Torre B', ground: undefined }] }
+  assert.deepEqual(buildSetupPayload(draft).torres.map((torre) => torre.terreo), ['COM_APARTAMENTOS', 'SEM_APARTAMENTOS'])
+  // 50 andares x 100 = 5.000 cabe; com o térreo vira 5.100
+  assert.equal(validateTowers([validTower({ floorCount: '50', unitsPerFloor: '100', unitDigits: '3', separator: '-' })]).length, 0)
+  assert.ok(validateTowers([validTower({ floorCount: '50', unitsPerFloor: '100', unitDigits: '3', separator: '-', ground: GROUND_WITH_UNITS })]).length > 0)
 })

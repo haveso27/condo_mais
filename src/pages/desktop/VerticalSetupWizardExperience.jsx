@@ -6,6 +6,8 @@ import BuildingPreview from '../../components/BuildingPreview'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import NumberStepper from '../../components/NumberStepper'
 import {
+  GROUND_OPTIONS,
+  GROUND_WITH_UNITS,
   MAX_TOWERS,
   PREDEFINED_COMMON_AREAS,
   SETUP_LIMITS,
@@ -99,7 +101,8 @@ function TowerCard({ tower, index, suggestion, canRemove, canDuplicate, dispatch
       <Field label="Nome da torre" id={id('name')} fieldKey={key('name')} error={findError(errors, key('name'))} hint="Sugestão automática; você pode editar."><input value={tower.name} onChange={update('name')} placeholder={`Ex.: ${suggestion}`} /></Field>
       <Field label="Quantidade de andares" id={id('floorCount')} fieldKey={key('floorCount')} error={findError(errors, key('floorCount'))}><NumberStepper label="andares" min={1} max={SETUP_LIMITS.floorCount} value={tower.floorCount} onChange={set('floorCount')} /></Field>
       <Field label="Apartamentos por andar" id={id('unitsPerFloor')} fieldKey={key('unitsPerFloor')} error={findError(errors, key('unitsPerFloor'))}><UnitsPerFloorControl value={tower.unitsPerFloor} onChange={set('unitsPerFloor')} /></Field>
-      <Field label="Primeiro andar" id={id('firstFloor')} fieldKey={key('firstFloor')} error={findError(errors, key('firstFloor'))}><select value={tower.firstFloor} onChange={update('firstFloor')}>{floorChoices.map((floor) => <option key={floor} value={floor}>{floor}º andar</option>)}</select></Field>
+      <Field label="Térreo" id={id('ground')} fieldKey={key('ground')} hint={tower.ground === GROUND_WITH_UNITS ? 'O térreo entra além dos andares, com os mesmos apartamentos por andar (ex.: 001, 002).' : 'Nenhuma unidade é gerada no térreo.'}><select value={tower.ground || GROUND_OPTIONS[0][0]} onChange={update('ground')}>{GROUND_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
+      <Field label={tower.ground === GROUND_WITH_UNITS ? 'Primeiro andar acima do térreo' : 'Primeiro andar'} id={id('firstFloor')} fieldKey={key('firstFloor')} error={findError(errors, key('firstFloor'))}><select value={tower.firstFloor} onChange={update('firstFloor')}>{floorChoices.map((floor) => <option key={floor} value={floor}>{floor}º andar</option>)}</select></Field>
       <Field label="Primeiro apartamento do andar" id={id('firstUnit')} fieldKey={key('firstUnit')} error={findError(errors, key('firstUnit'))} hint="Sugestão: 1, para iniciar em 01, 02, 03…"><NumberStepper label="primeiro apartamento" min={1} max={SETUP_LIMITS.firstUnit} value={tower.firstUnit} onChange={set('firstUnit')} /></Field>
       <Field label="Quantidade de dígitos do apartamento" id={id('unitDigits')} fieldKey={key('unitDigits')} error={findError(errors, key('unitDigits'))} hint="2 dígitos geram 01; 3 dígitos geram 001."><select value={tower.unitDigits} onChange={update('unitDigits')}><option value="1">1 dígito</option><option value="2">2 dígitos</option><option value="3">3 dígitos</option><option value="4">4 dígitos</option></select></Field>
       <Field label="Separador entre andar e apartamento" id={id('separator')} fieldKey={key('separator')} hint="Com hífen, por exemplo, o resultado será 1-01."><select value={tower.separator} onChange={update('separator')}>{separatorChoices.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>

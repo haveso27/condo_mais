@@ -49,8 +49,8 @@ test('monta o corpo com os parâmetros das torres, sem o nome do condomínio', (
     cidade: 'Recife',
     estado: 'PE',
     torres: [
-      { nome: 'Torre A', andares: 10, unidadesPorAndar: 4, andarInicial: 1, sequenciaInicial: 1, digitos: 2, separador: '' },
-      { nome: 'Torre B', andares: 2, unidadesPorAndar: 3, andarInicial: 5, sequenciaInicial: 3, digitos: 3, separador: '-' },
+      { nome: 'Torre A', andares: 10, unidadesPorAndar: 4, andarInicial: 1, sequenciaInicial: 1, digitos: 2, separador: '', terreo: 'SEM_APARTAMENTOS' },
+      { nome: 'Torre B', andares: 2, unidadesPorAndar: 3, andarInicial: 5, sequenciaInicial: 3, digitos: 3, separador: '-', terreo: 'SEM_APARTAMENTOS' },
     ],
     areasComuns: [
       { nome: 'Piscina', descricao: null, reservavel: false, exigeAprovacao: false, capacidade: null },
@@ -89,7 +89,7 @@ function renderWizard({ saveSetup, reloadSession = async () => {}, loadCurrentUs
     )))
 }
 
-async function preencherAteOResumo(view) {
+async function preencherAteOResumo(view, { terreo } = {}) {
   await waitFor(() => assert.equal(view.getByLabelText('Nome do condomínio').value, 'Residencial Teste'))
   const continuar = () => fireEvent.click(view.getByRole('button', { name: /Continuar/ }))
   fireEvent.change(view.getByLabelText('Endereço'), { target: { value: 'Rua das Flores, 100' } })
@@ -98,12 +98,27 @@ async function preencherAteOResumo(view) {
   continuar() // dados -> modelo
   continuar() // modelo -> torres
   fireEvent.change(view.getByLabelText('Nome da torre'), { target: { value: 'Torre A' } })
+  if (terreo) {
+    fireEvent.change(view.getByLabelText('Térreo'), { target: { value: terreo } })
+    // Com apartamentos no térreo, o primeiro andar passa a ser o primeiro acima dele
+    assert.ok(view.getByLabelText(terreo === 'COM_APARTAMENTOS' ? 'Primeiro andar acima do térreo' : 'Primeiro andar'))
+  }
   continuar() // torres -> prévia
   continuar() // prévia -> áreas
   fireEvent.click(view.getByLabelText('Piscina'))
   continuar() // áreas -> resumo
   return view.getByRole('button', { name: /Concluir configuração/ })
 }
+
+test('térreo com apartamentos escolhido na lista vai no envio', async () => {
+  const enviados = []
+  const view = renderWizard({ saveSetup: async (payload) => { enviados.push(payload); return { configuracaoInicial: 'CONCLUIDA' } } })
+
+  fireEvent.click(await preencherAteOResumo(view, { terreo: 'COM_APARTAMENTOS' }))
+
+  await waitFor(() => assert.equal(enviados.length, 1))
+  assert.equal(enviados[0].torres[0].terreo, 'COM_APARTAMENTOS')
+})
 
 test('nome do condomínio vem do cadastro do MASTER e fica só para leitura', async () => {
   const view = renderWizard({ saveSetup: async () => ({}) })
