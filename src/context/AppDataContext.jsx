@@ -186,7 +186,7 @@ export function AppDataProvider({ children }) {
     setStaffStatusRemote: (id, status) => command(() => alterarStatusMorador(id, status)),
     addPackageRemote: (form) => collectionCommand('packages', () => registrarEncomenda(form, dataRef.current.units)),
     withdrawPackageRemote: (id) => collectionCommand('packages', () => registrarRetiradaEncomenda(id)),
-    saveNoticeRemote: (form, editingId) => collectionCommand('notices', () => salvarComunicado(form, editingId, dataRef.current.towers)),
+    saveNoticeRemote: (form, editingId) => collectionCommand('notices', () => salvarComunicado(form, editingId, dataRef.current.towers, dataRef.current.tickets)),
     deleteNoticeRemote: (id) => collectionCommand('notices', () => excluirComunicado(id)),
     addReservationRemote: (form) => collectionCommand('reservations', () => solicitarReserva(form, dataRef.current.areas)),
     setReservationStatusRemote: (id, status) => collectionCommand('reservations', () => alterarStatusReserva(id, status)),
