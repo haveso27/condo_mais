@@ -35,6 +35,7 @@ export default function DynamicForm({ fields, values, onChange, error, columns =
                 : field.type === 'stepper' ? <NumberStepper {...common} label={field.label} min={field.min} max={field.max} onChange={(next) => onChange(field.key, next)} />
                   : field.type === 'textarea' ? <textarea {...common} placeholder={field.placeholder || ''} />
               : <input {...common} type={field.type || 'text'} placeholder={field.placeholder || ''} />}
+          {field.hint && <small className="field-hint">{field.hint}</small>}
           {invalid && <span id={`${id}-error`} className="field-error" role="alert">{error}</span>}
         </label>
       })}

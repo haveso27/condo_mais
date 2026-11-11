@@ -182,7 +182,7 @@ test('comunicados também carregam na sessão e publicar/excluir passam pela API
   assert.equal(state.data.notices[0].status, 'ATIVO')
 
   await act(async () => { await state.actions.saveNoticeRemote({ title: 'Novo', content: 'Texto', priority: 'NORMAL' }) })
-  assert.deepEqual(calls.find((call) => call.method === 'POST' && call.path === '/interativo/avisos').body, { titulo: 'Novo', conteudo: 'Texto', prioridade: 'NORMAL', dataValidade: null, torreId: null })
+  assert.deepEqual(calls.find((call) => call.method === 'POST' && call.path === '/interativo/avisos').body, { titulo: 'Novo', conteudo: 'Texto', prioridade: 'NORMAL', dataValidade: null, torreId: null, chamadoId: null })
   await act(async () => { await state.actions.deleteNoticeRemote('av-1') })
   assert.ok(calls.some((call) => call.method === 'DELETE' && call.path === '/interativo/avisos/av-1'))
   // Depois de cada comando a lista é recarregada do servidor

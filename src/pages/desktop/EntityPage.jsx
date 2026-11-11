@@ -19,6 +19,7 @@ import { basicValidation, noticePeriodError, unitDuplicate, unitEditPatch, unitS
 import { visitPeriodError, visitantesService, visitorEntryError } from '../../services/visitantesService'
 import { findPackageUnit } from '../../services/encomendasApi'
 import { TICKET_COMMON_AREA, ticketNextStatuses, ticketUnitLabel } from '../../services/chamadosApi'
+import { noticeMentions, ticketOption } from '../../services/comunicadosApi'
 import { areaBody, areaNameTaken, areasService } from '../../services/areasComunsApi'
 
 import { confirmationMessage, emptyMessage } from '../../config/uiPresentation'
@@ -40,6 +41,12 @@ function cellValue(record, key, secondKey) {
   const first = present(record[key])
   const second = secondKey ? present(record[secondKey]) : ''
   return { first, second: second === '—' ? '' : second }
+}
+
+// Dica do texto do comunicado: como mencionar e, enquanto digita, a que chamado cada @código se refere
+function mentionHint(content, tickets = []) {
+  const found = noticeMentions(content, tickets).map(({ code, title }) => `@${code.slice(1)} = ${title || 'chamado não encontrado'}`)
+  return `Você pode mencionar um chamado digitando @ e o código dele (ex.: @3F2A1C9E).${found.length ? ` Menções: ${found.join('; ')}.` : ''}`
 }
 
 function validate(fields, values) {
@@ -107,6 +114,10 @@ function EntityModule({ role, type }) {
         if ((remotePackages || remoteVisitors) && field.key === 'unit') return { ...field, type: 'search', options: packageUnitOptions, placeholder: 'Digite para buscar a unidade' }
         return field
       })
+      // Comunicado do admin: pode se referir a um chamado, pelo campo ou mencionando @código no texto
+      .flatMap((field) => remoteNotices && role === 'admin' && field.key === 'content'
+        ? [{ ...field, hint: mentionHint(form.content, data.tickets) }, { key: 'ticket', label: 'Chamado relacionado (opcional)', type: 'search', options: (data.tickets || []).map(ticketOption), placeholder: 'Busque pelo código ou pelo título' }]
+        : [field])
     : config.fields
   // Área comum: a aprovação só aparece para área que pode ser reservada.
   // Unidade: OCUPADO vem dos moradores; a ocupada só mostra esse status e as demais não podem escolhê-lo.

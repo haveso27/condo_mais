@@ -16,6 +16,7 @@ import { availabilityFromOccupation, bookableAreas, carregarOcupacaoDoPeriodo } 
 import { TICKET_COMMON_AREA, ticketUnitLabel } from '../../services/chamadosApi'
 import { statusLabel, sameUnit, activeNotices, basicValidation } from '../../services/serviceUtils'
 import { visitPeriodError, visitantesService } from '../../services/visitantesService'
+import { annotateMentions } from '../../services/comunicadosApi'
 
 import { confirmationMessage, emptyMessage } from '../../config/uiPresentation'
 import { priorities, commonAreas } from '../../config/catalogs'
@@ -33,7 +34,7 @@ export function CommunicationsPage() {
   const [tab, setTab] = useState('Todos')
   const [selected, setSelected] = useState(null)
   const items = useMemo(() => {
-    const notices = activeNotices(data.notices, data.currentResident).map((notice) => ({ id: notice.id, type: 'Aviso', title: notice.title, text: notice.content, time: `${notice.startDate} · ${statusLabel(notice.priority)}`, tone: notice.priority === 'URGENTE' ? 'red' : 'green', icon: Megaphone, link: `/morador/comunicados/${encodeURIComponent(notice.id)}` }))
+    const notices = activeNotices(data.notices, data.currentResident).map((notice) => ({ id: notice.id, type: 'Aviso', title: notice.title, text: annotateMentions(notice), time: `${notice.startDate} · ${statusLabel(notice.priority)}`, tone: notice.priority === 'URGENTE' ? 'red' : 'green', icon: Megaphone, link: `/morador/comunicados/${encodeURIComponent(notice.id)}` }))
     const packages = data.packages.filter((item) => sameUnit(item, data.currentResident) && item.status === 'AGUARDANDO_RETIRADA').map((item) => ({ id: item.id, type: 'Encomenda', title: 'Nova encomenda recebida', text: `${item.code || item.id} está aguardando retirada na portaria.`, time: item.receivedAt, tone: 'green', icon: Package }))
     return [...packages, ...notices]
   }, [data])
@@ -45,7 +46,7 @@ export function CommunicationDetail() {
   const { data } = useAppData()
   const { id } = useParams()
   const notice = activeNotices(data.notices, data.currentResident).find((item) => item.id === id)
-  return <ResidentLayout><section className="resident-page"><ResidentPageHeader backTo="/morador/comunicados" title={notice?.title || 'Comunicado não encontrado'} subtitle={notice ? `${notice.startDate} · ${statusLabel(notice.priority)}` : ''} /><article className="detail-copy"><p>{notice ? notice.content : 'Este comunicado não está disponível para consulta.'}</p></article></section></ResidentLayout>
+  return <ResidentLayout><section className="resident-page"><ResidentPageHeader backTo="/morador/comunicados" title={notice?.title || 'Comunicado não encontrado'} subtitle={notice ? `${notice.startDate} · ${statusLabel(notice.priority)}` : ''} /><article className="detail-copy"><p>{notice ? annotateMentions(notice) : 'Este comunicado não está disponível para consulta.'}</p>{notice?.ticketSummary && <p className="detail-ticket"><strong>Chamado relacionado:</strong> {notice.ticketSummary}</p>}</article></section></ResidentLayout>
 }
 
 export function MorePage() {
