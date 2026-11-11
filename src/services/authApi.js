@@ -38,6 +38,27 @@ export function logout() { setToken('') }
 
 // Primeiro acesso: cria a senha de um usuário pré-cadastrado pela Administração e já entra no sistema.
 // O backend responde a mesma recusa (403) para CPF inexistente e para quem já tem senha.
+// Recuperação de senha por e-mail: o backend responde sempre a mesma mensagem (não revela se o CPF existe)
+export const RECOVERY_SENT = 'Se o CPF estiver cadastrado com um e-mail, enviamos um link para criar uma nova senha. Ele vale por 30 minutos.'
+export const RECOVERY_LINK_INVALID = 'Este link de recuperação é inválido ou expirou. Peça um novo.'
+
+export async function recuperarSenha(cpf, options) {
+  try {
+    const resposta = await apiPost('/auth/recuperar-senha', { cpf: formatCpf(cpf) }, options)
+    return resposta?.mensagem || RECOVERY_SENT
+  } catch (error) {
+    // 503 = envio de e-mail não configurado no servidor (o front não exibe texto do backend em 5xx)
+    if (error instanceof ApiError && error.status === 503) throw new ApiError(503, 'A recuperação de senha por e-mail não está disponível no momento. Procure a administração do condomínio.')
+    throw error
+  }
+}
+
+export async function redefinirSenha(token, novaSenha, options) {
+  if (!token?.trim()) throw new ApiError(400, RECOVERY_LINK_INVALID)
+  const resposta = await apiPost('/auth/redefinir-senha', { token: token.trim(), novaSenha }, options)
+  return resposta?.mensagem || 'Senha alterada com sucesso. Você já pode entrar com a nova senha.'
+}
+
 export async function primeiroAcesso(cpf, novaSenha, options) {
   try {
     await apiPost('/auth/primeiro-acesso', { cpf: formatCpf(cpf), novaSenha }, options)

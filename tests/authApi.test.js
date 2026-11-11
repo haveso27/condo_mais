@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { getToken, setToken } from '../src/services/api.js'
-import { cpfComplete, formatCpf, login, logout, primeiroAcesso, profilePath } from '../src/services/authApi.js'
+import { RECOVERY_LINK_INVALID, cpfComplete, formatCpf, login, logout, primeiroAcesso, profilePath, recuperarSenha, redefinirSenha } from '../src/services/authApi.js'
 
 // sessionStorage mínimo para o Node.
 const storage = new Map()
@@ -101,4 +101,30 @@ test('primeiro acesso recusado não revela o motivo e não chama o login', async
   await assert.rejects(primeiroAcesso('529.982.247-25', 'senha-forte', { fetchImpl }), (error) => error.status === 403 && /cadastro pendente de ativação/.test(error.message))
   assert.equal(calls.length, 1)
   assert.equal(getToken(), '')
+})
+
+test('recuperação de senha: pede o link com o CPF formatado e troca a senha com o token', async () => {
+  const pedido = respond(200, { mensagem: 'Se o CPF estiver cadastrado com um e-mail, enviamos um link.' })
+  assert.equal(await recuperarSenha('15729185430', { fetchImpl: pedido.fetchImpl }), 'Se o CPF estiver cadastrado com um e-mail, enviamos um link.')
+  assert.match(pedido.calls[0].url, /\/auth\/recuperar-senha$/)
+  assert.deepEqual(JSON.parse(pedido.calls[0].init.body), { cpf: '157.291.854-30' })
+
+  const troca = respond(200, { mensagem: 'Senha alterada com sucesso.' })
+  assert.equal(await redefinirSenha(' tok-123 ', 'NovaSenha@1', { fetchImpl: troca.fetchImpl }), 'Senha alterada com sucesso.')
+  assert.match(troca.calls[0].url, /\/auth\/redefinir-senha$/)
+  assert.deepEqual(JSON.parse(troca.calls[0].init.body), { token: 'tok-123', novaSenha: 'NovaSenha@1' })
+  // Não manda o token no Authorization: a rota é pública
+  assert.equal(troca.calls[0].init.headers.Authorization, undefined)
+})
+
+test('recuperação de senha: sem token não chama a API e os erros do backend chegam à tela', async () => {
+  const nada = respond(200, {})
+  await assert.rejects(redefinirSenha('', 'NovaSenha@1', { fetchImpl: nada.fetchImpl }), (error) => error.status === 400 && error.message === RECOVERY_LINK_INVALID)
+  assert.equal(nada.calls.length, 0)
+
+  const expirado = respond(400, { status: 400, mensagem: 'Este link de recuperação é inválido ou expirou. Peça um novo.' })
+  await assert.rejects(redefinirSenha('velho', 'NovaSenha@1', { fetchImpl: expirado.fetchImpl }), (error) => /expirou/.test(error.message))
+
+  const desligado = respond(503, { status: 503, mensagem: 'A recuperação de senha por e-mail não está disponível. Procure a administração do condomínio.' })
+  await assert.rejects(recuperarSenha('157.291.854-30', { fetchImpl: desligado.fetchImpl }), (error) => error.status === 503 && /administração/.test(error.message))
 })
