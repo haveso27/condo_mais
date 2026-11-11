@@ -119,6 +119,17 @@ export async function salvarUnidade(form, editingId, towers, options) {
 
 export function excluirUnidade(id, options) { return apiDelete(`/condominios/apartamentos/${id}`, options) }
 
+// Exclui a torre junto com as unidades dela (corrige uma torre cadastrada errada). O backend recusa (409, dizendo
+// o quê) se alguma unidade tiver morador, encomenda, visita ou chamado, ou se houver aviso para a torre.
+export function excluirTorre(id, options) { return apiDelete(`/condominios/torres/${id}`, options) }
+
+export function towerDeletionMessage(towerName, units = []) {
+  if (!towerName) return 'Selecione a torre que será excluída.'
+  const count = units.filter((unit) => unit.tower === towerName).length
+  const what = count === 0 ? 'Ela não tem unidades.' : count === 1 ? 'A unidade dela também será excluída.' : `As ${count} unidades dela também serão excluídas.`
+  return `A torre "${towerName}" será excluída definitivamente. ${what} Só é possível se nenhuma unidade tiver morador, encomenda, visita ou chamado, nem houver aviso para a torre. Use para corrigir uma torre cadastrada errada e depois cadastre de novo.`
+}
+
 export async function salvarMorador(form, editingId, units, options) {
   const unit = units.find((item) => item.tower === form.tower && item.number === String(form.unit).trim())
   if (!unit) throw new ApiError(400, 'Selecione uma unidade existente nesta Torre / Bloco.')

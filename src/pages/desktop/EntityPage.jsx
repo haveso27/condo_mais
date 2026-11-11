@@ -19,6 +19,7 @@ import { reservasService } from '../../services/reservasService'
 import { basicValidation, noticePeriodError, unitDuplicate, unitEditPatch, unitStatusField, matchesQuery, statusLabel, todayIso } from '../../services/serviceUtils'
 import { visitPeriodError, visitantesService, visitorEntryError } from '../../services/visitantesService'
 import { findPackageUnit } from '../../services/encomendasApi'
+import { towerDeletionMessage } from '../../services/cadastrosApi'
 import { TICKET_COMMON_AREA, ticketNextStatuses, ticketUnitLabel } from '../../services/chamadosApi'
 import { noticeMentions, ticketOption } from '../../services/comunicadosApi'
 import { areaBody, areaNameTaken, areasService } from '../../services/areasComunsApi'
@@ -85,6 +86,7 @@ function EntityModule({ role, type }) {
   const towerNames = remoteMode ? (data.towers || []).map((tower) => tower.name) : towers.slice(0, 3)
   const [busy, setBusy] = useState(false)
   const [towerForm, setTowerForm] = useState(null)
+  const [towerDelete, setTowerDelete] = useState(null)
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState(0)
   const [filters, setFilters] = useState({ tower: '', unit: '', priority: '', category: '', date: '', user: '', operation: '', doorman: '' })
@@ -421,7 +423,7 @@ function EntityModule({ role, type }) {
 
   return <DesktopLayout role={role}>
     <section className="entity-page">
-      <div className="entity-heading"><div><h1>{config.title}</h1><p>{config.subtitle}</p></div><div className="entity-heading-actions">{remoteMode && config.collection === 'units' && ['', 'VERTICAL'].includes(data.condominium.model || '') && <Link className="secondary-button" to="/admin/torres/novas">Adicionar torres pelo assistente</Link>}{remoteMode && config.collection === 'units' && <button className="secondary-button" onClick={() => { setTowerForm({ name: '' }); setError('') }}>+ Nova torre</button>}{config.action && <button className="desktop-primary" onClick={startCreate}>+ {config.action}</button>}</div></div>
+      <div className="entity-heading"><div><h1>{config.title}</h1><p>{config.subtitle}</p></div><div className="entity-heading-actions">{remoteMode && config.collection === 'units' && ['', 'VERTICAL'].includes(data.condominium.model || '') && <Link className="secondary-button" to="/admin/torres/novas">Adicionar torres pelo assistente</Link>}{remoteMode && config.collection === 'units' && <button className="secondary-button" onClick={() => { setTowerForm({ name: '' }); setError('') }}>+ Nova torre</button>}{remoteMode && config.collection === 'units' && towerNames.length > 0 && <button className="danger-button" onClick={() => { setTowerDelete({ tower: '' }); setError('') }}>Excluir torre</button>}{config.action && <button className="desktop-primary" onClick={startCreate}>+ {config.action}</button>}</div></div>
       <div className="entity-toolbar"><div className="tabs">{config.tabs.map(([label], index) => <button aria-pressed={tab === index} className={tab === index ? 'active' : ''} onClick={() => setTab(index)} key={label}>{label}</button>)}</div><label className="search-box"><Search size={17} /><input aria-label="Buscar registros" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar registros..." /></label></div>
       <div className="advanced-filters">
         {showTower && <label>Torre / Bloco<select value={filters.tower} onChange={(event) => setFilter('tower', event.target.value)}><option value="">Todas</option>{(remoteMode ? towerNames : towers).map((item) => <option key={item}>{item}</option>)}</select></label>}
@@ -439,6 +441,12 @@ function EntityModule({ role, type }) {
     <Modal open={Boolean(details)} title={details ? `Detalhes · ${details.code || (isUuid(details.id) ? details.title || details.name || '' : details.id)}` : 'Detalhes'} onClose={() => setDetails(null)} ><RecordDetails record={details} collection={config.collection} />{details && <div className="detail-actions">{detailActions(details)}</div>}{details && config.collection === 'tickets' && !(remoteTickets && details.status === 'ENCERRADO') && <div className="comment-box"><label>Adicionar comentário<textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Descreva a atualização" /></label><button className="secondary-button" disabled={!comment.trim() || busy} onClick={() => { if (remoteTickets) { addRemoteComment(); return } actions.updateTicket(details.id, { comments: [...(details.comments || []), comment] }); setDetails({ ...details, comments: [...(details.comments || []), comment] }); setComment(''); flash('Comentário adicionado.') }}>Adicionar comentário</button></div>}</Modal>
     <ConfirmDialog open={Boolean(pendingAction)} title={pendingAction?.label} message={confirmationMessage(pendingAction?.record, pendingAction?.label, pendingAction?.status)} destructive={['RECUSADO', 'CANCELADA', 'ENCERRADO', 'INATIVO', 'EXCLUIDA', 'EXCLUIDO', 'AREA_INATIVA'].includes(pendingAction?.status)} confirmLabel={busy ? 'Aguarde...' : pendingAction?.label || 'Confirmar'} onCancel={() => { setPendingAction(null); setSolution(''); setPickup({}); setPickupError('') }} onConfirm={confirmAction} error={pendingAction?.action === 'package' ? pickupError : ''}>{remotePackages && pendingAction?.action === 'package' && <PickupFields record={pendingAction.record} values={pickup} towers={towerNames} units={data.units} onChange={(key, value) => { setPickup((current) => ({ ...current, [key]: value })); setPickupError('') }} />}{pendingAction?.action === 'ticket' && pendingAction?.status === 'RESOLVIDO' && <label className="confirm-extra">Solução aplicada (opcional)<textarea value={solution} onChange={(event) => setSolution(event.target.value)} placeholder="Ex.: disjuntor trocado pela empresa de manutenção" /></label>}</ConfirmDialog>
     <Modal open={Boolean(towerForm)} title="Nova torre" onClose={() => setTowerForm(null)} onConfirm={async () => { const ok = await runRemote(() => actions.createTower(towerForm.name), setError); if (ok) { setTowerForm(null); flash('Torre cadastrada.') } }} confirmLabel={busy ? 'Salvando...' : 'Salvar'}><DynamicForm fields={[{ key: 'name', label: 'Nome da torre / bloco', required: true }]} values={towerForm || {}} onChange={(key, value) => { setTowerForm((current) => ({ ...current, [key]: value })); setError('') }} error={towerForm ? error : ''} columns={false} /></Modal>
+    <Modal open={Boolean(towerDelete)} title="Excluir torre" intent="danger" busy={busy} onClose={() => setTowerDelete(null)} onConfirm={async () => {
+      const tower = (data.towers || []).find((item) => item.name === towerDelete.tower)
+      if (!tower) { setError('Selecione a torre que será excluída.'); return }
+      const ok = await runRemote(() => actions.deleteTowerRemote(tower.id), setError)
+      if (ok) { setTowerDelete(null); setDetails(null); flash(`Torre "${tower.name}" excluída com as unidades dela.`) }
+    }} confirmLabel={busy ? 'Excluindo...' : 'Excluir torre e unidades'}><DynamicForm fields={[{ key: 'tower', label: 'Torre / Bloco', type: 'select', options: towerNames, required: true }]} values={towerDelete || {}} onChange={(key, value) => { setTowerDelete((current) => ({ ...current, [key]: value })); setError('') }} error={towerDelete ? error : ''} columns={false} /><p className="confirm-extra">{towerDeletionMessage(towerDelete?.tower, data.units)}</p></Modal>
     <div role="status" aria-live="polite" aria-atomic="true">{saved && <div className="toast">{saved}</div>}</div>
   </DesktopLayout>
 }
