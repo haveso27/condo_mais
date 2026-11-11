@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useAppData } from '../../context/AppDataContext'
 import AuthLayout from '../../layouts/AuthLayout'
 import { apiEnabled, getToken } from '../../services/api'
-import { cpfComplete, formatCpf, logout, primeiroAcesso } from '../../services/authApi'
+import { RECOVERY_SENT, cpfComplete, formatCpf, logout, primeiroAcesso, recuperarSenha, redefinirSenha } from '../../services/authApi'
 import { authenticateAndEnter } from '../../features/session/authenticatedNavigation'
 
 const content = {
@@ -28,10 +28,14 @@ function AuthFlowStep({ step }) {
   const [invalidField, setInvalidField] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState('')
   const formRef = useRef(null)
   const errorId = useId()
   // Com a API, o CPF informado no primeiro passo segue para a criação de senha (Primeiro acesso)
   const activationCpf = location.state?.cpf || ''
+  // Recuperação: o link do e-mail traz o token em ?token=
+  const recoveryToken = new URLSearchParams(location.search).get('token') || ''
+  const recoveryApi = apiEnabled() && step.startsWith('recovery')
   useEffect(() => { if (error) formRef.current?.querySelector('[aria-invalid="true"]')?.focus() }, [error])
 
   async function submit(event) {
@@ -42,6 +46,20 @@ function AuthFlowStep({ step }) {
     if (values['Nova senha'] && values['Nova senha'].length < 8) { setInvalidField('Nova senha'); setError('A senha deve ter no mínimo 8 caracteres.'); return }
     if (values['Nova senha'] !== values['Confirmar senha']) { setInvalidField('Confirmar senha'); setError('As senhas devem ser iguais.'); return }
     if (apiEnabled() && step === 'first') { navigate(data.next, { state: { cpf: values.CPF } }); return }
+    if (recoveryApi && step === 'recovery2') { navigate('/'); return }
+    if (recoveryApi) {
+      setSubmitting(true)
+      try {
+        if (step === 'recovery1') navigate(data.next, { state: { message: await recuperarSenha(values.CPF) } })
+        else setDone(await redefinirSenha(recoveryToken, values['Nova senha']))
+      } catch (recoveryError) {
+        setInvalidField('')
+        setError(recoveryError.message)
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
     if (apiEnabled() && step === 'create') {
       setSubmitting(true)
       try {
@@ -73,15 +91,40 @@ function AuthFlowStep({ step }) {
     )
   }
 
+  // Link do e-mail aberto sem o token (ou a tela acessada direto): não há de quem trocar a senha
+  if (recoveryApi && step === 'recovery3' && !recoveryToken) {
+    return (
+      <AuthLayout>
+        <div className="auth-heading"><h2>Link inválido</h2><p>Abra o link enviado para o seu e-mail ou peça um novo.</p></div>
+        <button className="primary-button" onClick={() => navigate('/recuperar-senha', { replace: true })}>Pedir novo link</button>
+      </AuthLayout>
+    )
+  }
+
+  if (done) {
+    return (
+      <AuthLayout>
+        <div className="auth-heading"><h2>Senha alterada</h2><p>{done}</p></div>
+        <button className="primary-button" onClick={() => navigate('/', { replace: true })}>Entrar</button>
+      </AuthLayout>
+    )
+  }
+
+  const heading = recoveryApi && step === 'recovery2'
+    ? { title: 'Verifique seu e-mail', text: `${location.state?.message || RECOVERY_SENT}` }
+    : data
+  const actionLabel = recoveryApi && step === 'recovery2' ? 'Voltar ao login' : data.action
+  const busyLabel = step === 'create' ? 'Ativando...' : step === 'recovery1' ? 'Enviando...' : 'Salvando...'
+
   return (
     <AuthLayout>
-      <div className="auth-heading"><h2>{data.title}</h2><p>{data.text}</p></div>
-      {step === 'recovery2' && <div className="masked-email">m a • • • • • • @ g m a i l . c o m</div>}
+      <div className="auth-heading"><h2>{heading.title}</h2><p>{heading.text}</p></div>
+      {step === 'recovery2' && !recoveryApi && <div className="masked-email">m a • • • • • • @ g m a i l . c o m</div>}
       <form ref={formRef} className="login-form" onSubmit={submit}>
         {data.fields.map((field) => <label key={field}>{field}<span className="input-wrap">{field === 'CPF' ? <UserRound size={18} /> : <LockKeyhole size={18} />}<input aria-invalid={Boolean(error && invalidField === field) || undefined} aria-describedby={error && invalidField === field ? errorId : undefined} aria-required="true" value={values[field] || ''} onChange={(event) => { const value = field === 'CPF' ? formatCpf(event.target.value) : event.target.value; setValues((current) => ({ ...current, [field]: value })); setError('') }} type={field === 'CPF' ? 'text' : 'password'} {...(field === 'CPF' ? { inputMode: 'numeric', maxLength: 14 } : {})} placeholder={field === 'CPF' ? '000.000.000-00' : `Digite ${field.toLowerCase()}`} /></span>{field === 'Nova senha' && <small className="field-hint">Mínimo de 8 caracteres.</small>}</label>)}
         {step === 'create' && activationCpf && <p className="field-hint">Ativando o acesso do CPF {activationCpf}.</p>}
         {error && <p id={errorId} className="form-error" role="alert">{error}</p>}
-        <button className="primary-button" type="submit" disabled={submitting}>{submitting ? 'Ativando...' : data.action}</button>
+        <button className="primary-button" type="submit" disabled={submitting}>{submitting ? busyLabel : actionLabel}</button>
         <button type="button" className="text-link back-auth" onClick={() => navigate(-1)}>← Voltar</button>
       </form>
       {(step === 'first' || step === 'recovery1') && <><div className="divider"><span>ou</span></div><button className="outline-auth" onClick={() => navigate(step === 'first' ? '/' : '/primeiro-acesso')}>{step === 'first' ? 'Voltar ao login' : 'Ativar minha conta'}</button></>}
