@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { ApiError, apiGet, condominioIdFromToken, getToken, setToken, tokenClaims } from '../src/services/api.js'
 import { subscribeToSessionChanges } from '../src/services/sessionEvents.js'
 import { createTestServer } from './viteTestServer.js'
-import { alterarStatusMorador, carregarCadastros, carregarUsuarioLogado, criarTorre, excluirUnidade, linkResidents, salvarMorador, salvarUnidade, salvarUsuarioEquipe, staffRole, toResident, toStaff, toUnit } from '../src/services/cadastrosApi.js'
+import { alterarStatusMorador, carregarCadastros, carregarUsuarioLogado, criarTorre, excluirTorre, excluirUnidade, linkResidents, salvarMorador, salvarUnidade, salvarUsuarioEquipe, staffRole, toResident, toStaff, toUnit } from '../src/services/cadastrosApi.js'
 
 // sessionStorage mínimo para o Node; cada teste define o próprio token.
 const storage = new Map()
@@ -242,4 +242,18 @@ test('com a API ligada, o estado inicial não traz dados de demonstração', asy
     for (const person of [...initialAppData.residents, ...initialAppData.staff]) assert.ok(!serialized.includes(person.name), person.name)
     assert.ok(!serialized.includes(initialAppData.condominium.name))
   } finally { await server.close() }
+})
+
+test('excluir torre: DELETE da torre e aviso de quantas unidades saem junto', async () => {
+  const { towerDeletionMessage } = await import('../src/services/cadastrosApi.js')
+  const { fetchImpl, calls } = fakeFetch([['/condominios', 204, null]])
+  await excluirTorre('t-a', { fetchImpl })
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url.replace(/^.*(\/condominios)/, '$1')]), [['DELETE', '/condominios/torres/t-a']])
+
+  const units = [{ tower: 'Torre A', number: '101' }, { tower: 'Torre A', number: '102' }, { tower: 'Torre B', number: '101' }]
+  assert.match(towerDeletionMessage('Torre A', units), /"Torre A".*As 2 unidades dela também serão excluídas/)
+  assert.match(towerDeletionMessage('Torre B', units), /A unidade dela também será excluída/)
+  assert.match(towerDeletionMessage('Torre C', units), /não tem unidades/)
+  assert.match(towerDeletionMessage('Torre A', units), /morador, encomenda, visita ou chamado/)
+  assert.equal(towerDeletionMessage('', units), 'Selecione a torre que será excluída.')
 })

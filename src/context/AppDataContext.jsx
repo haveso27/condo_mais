@@ -3,7 +3,7 @@ import { initialAppData } from '../mocks/appData'
 import { apiEnabled, getToken } from '../services/api'
 import { loadSessionBeforeOperational } from '../features/session/sessionAccess'
 import { notifySessionChanged } from '../services/sessionEvents'
-import { alterarStatusMorador, carregarCadastros, carregarUsuarioLogado, criarTorre, excluirUnidade, salvarMorador, salvarUnidade, salvarUsuarioEquipe } from '../services/cadastrosApi'
+import { alterarStatusMorador, carregarCadastros, carregarUsuarioLogado, criarTorre, excluirTorre, excluirUnidade, salvarMorador, salvarUnidade, salvarUsuarioEquipe } from '../services/cadastrosApi'
 import { avisosService } from '../services/avisosService'
 import { equipeService, moradoresService, unidadesService } from '../services/cadastrosService'
 import { chamadosService } from '../services/chamadosService'
@@ -181,6 +181,7 @@ export function AppDataProvider({ children }) {
     createTower: (name) => command(() => criarTorre(name)),
     saveUnitRemote: (form, editingId) => command(() => salvarUnidade(form, editingId, dataRef.current.towers)),
     deleteUnitRemote: (id) => command(() => excluirUnidade(id)),
+    deleteTowerRemote: (id) => command(() => excluirTorre(id)),
     saveResidentRemote: (form, editingId) => command(() => salvarMorador(form, editingId, dataRef.current.units)),
     setResidentStatusRemote: (id, status) => command(() => alterarStatusMorador(id, status)),
     saveStaffRemote: (form, editingId) => command(() => salvarUsuarioEquipe(form, editingId, dataRef.current.units)),
