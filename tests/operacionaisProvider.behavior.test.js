@@ -159,7 +159,7 @@ test('registrar e dar baixa passam pelo servidor e recarregam a lista', async ()
   assert.deepEqual(calls.find((call) => call.path.endsWith('/recebimento')).body, { apartamentoId: 'a-101', codigoIdentificacao: 'NOVA1', observacao: null })
   await waitFor(() => assert.equal(state.data.packages.length, 2))
 
-  await act(async () => { await state.actions.withdrawPackageRemote('e-1') })
+  await act(async () => { await state.actions.withdrawPackageRemote({ id: 'e-1', noRecipient: false }, { name: 'Carla' }) })
   await waitFor(() => assert.equal(state.data.packages.find((item) => item.id === 'e-1').status, 'RETIRADA'))
 })
 
@@ -511,4 +511,37 @@ test('admin acrescenta torres pelo assistente: sugere nome livre, recusa nome ex
   await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/condominios/torres/lote')))
   const enviado = calls.find((call) => call.method === 'POST' && call.path === '/condominios/torres/lote').body
   assert.deepEqual(enviado.torres.map((torre) => [torre.nome, torre.terreo]), [['Torre B', 'COM_APARTAMENTOS']])
+})
+
+test('portaria registra encomenda sem destinatário e só entrega com nome, código e apartamento informado', async () => {
+  const semDestinatario = { ...encomenda('e-1', 'AGUARDANDO RETIRADA', 'BR777'), semDestinatario: true, apartamentoId: null, apartamentoNumero: null, torreNome: null, moradorNome: null }
+  const calls = fakeApi({ packages: [semDestinatario] })
+  sessionStorage.setItem('condoplus.token', jwt({ perfil: 'PORTARIA', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 }))
+  const { fireEvent } = await import('@testing-library/react')
+  const { MemoryRouter } = await import('react-router-dom')
+  const { default: EntityPage } = await server.ssrLoadModule('/src/pages/desktop/EntityPage.jsx')
+  const view = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(EntityPage, { role: 'portaria', type: 'encomendasPortaria' }))))
+
+  assert.ok(await view.findByText('Destinatário não identificado'))
+
+  // Registro sem destinatário: marcar esconde torre e apartamento e envia sem unidade
+  fireEvent.click(view.getByRole('button', { name: /Registrar encomenda/ }))
+  fireEvent.click(view.getByLabelText(/Destinatário não identificado/))
+  assert.equal(view.queryByLabelText(/^Apartamento/), null)
+  fireEvent.change(view.getByLabelText(/Código \/ identificação/), { target: { value: 'BR888' } })
+  fireEvent.click(view.getByRole('button', { name: 'Registrar' }))
+  await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/portaria/encomendas/recebimento')))
+  assert.deepEqual(calls.find((call) => call.path === '/portaria/encomendas/recebimento').body, { apartamentoId: null, codigoIdentificacao: 'BR888', observacao: null })
+
+  // Retirada da sem destinatário: pede nome, código apresentado e apartamento informado
+  fireEvent.click(view.getAllByRole('button', { name: 'Ver detalhes' }).at(-1))
+  fireEvent.click(view.getAllByRole('button', { name: 'Confirmar retirada' }).at(-1))
+  fireEvent.change(view.getByLabelText(/Nome de quem está retirando/), { target: { value: 'Maria Lima' } })
+  fireEvent.change(view.getByLabelText(/Código apresentado/), { target: { value: 'br777' } })
+  fireEvent.change(view.getByLabelText(/Torre \/ Bloco informado/), { target: { value: 'Torre A' } })
+  fireEvent.change(view.getByLabelText(/^Apartamento informado/), { target: { value: '101' } })
+  fireEvent.click(view.getAllByRole('button', { name: 'Confirmar retirada' }).at(-1))
+  await waitFor(() => assert.ok(calls.some((call) => call.method === 'PUT' && call.path === '/portaria/encomendas/e-1/retirada')))
+  assert.deepEqual(calls.find((call) => call.method === 'PUT' && call.path === '/portaria/encomendas/e-1/retirada').body,
+    { retiranteNome: 'Maria Lima', codigoConferencia: 'br777', apartamentoInformadoId: 'a-101' })
 })
