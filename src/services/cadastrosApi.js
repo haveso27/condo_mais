@@ -57,6 +57,11 @@ export function toStaff(usuario) {
     role: staffRole(usuario.perfil),
     status: usuario.status || 'ATIVO',
     pendingFirstAccess: Boolean(usuario.primeiroAcessoPendente),
+    // Síndico que também mora no condomínio
+    livesHere: Boolean(usuario.apartamentoId),
+    tower: usuario.torreNome || '',
+    unit: usuario.apartamentoNumero || '',
+    relation: usuario.vinculo || '',
   }
 }
 
@@ -80,7 +85,9 @@ export async function carregarCadastros(options) {
   const towers = torres.map((torre) => ({ id: torre.id, name: torre.nome })).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
   const towerNames = Object.fromEntries(towers.map((tower) => [tower.id, tower.name]))
   const residents = usuarios.filter((usuario) => usuario.perfil === 'MORADOR').map(toResident)
-  const units = linkResidents(apartamentos.map((apartamento) => toUnit(apartamento, towerNames)), residents)
+  // A unidade também mostra o síndico que mora nela (ele não entra na lista de moradores, que é editada como morador)
+  const adminResidents = usuarios.filter((usuario) => staffRole(usuario.perfil) === 'ADMIN' && usuario.apartamentoId).map(toResident)
+  const units = linkResidents(apartamentos.map((apartamento) => toUnit(apartamento, towerNames)), [...residents, ...adminResidents])
   const staff = usuarios.filter((usuario) => staffRole(usuario.perfil)).map(toStaff)
   return { towers, units, residents, staff }
 }
@@ -89,7 +96,8 @@ export async function carregarCadastros(options) {
 export async function carregarUsuarioLogado(options) {
   const usuario = await carregarSessaoAtual(options)
   return {
-    currentResident: toResident(usuario),
+    // O perfil decide o atalho entre as visões de administrador e de morador
+    currentResident: { ...toResident(usuario), profile: staffRole(usuario.perfil) || String(usuario.perfil || '').toUpperCase() },
     condominiumName: usuario.condominioNome || '',
     profile: usuario.perfil || '',
     setupState: usuario.configuracaoInicial || '',
@@ -119,10 +127,20 @@ export async function salvarMorador(form, editingId, units, options) {
 }
 
 // Portaria/Administração: sem unidade nem vínculo; e-mail e telefone são opcionais
-export async function salvarUsuarioEquipe(form, editingId, options) {
+export async function salvarUsuarioEquipe(form, editingId, units = [], options) {
   const perfil = staffRole(form.role)
   if (!perfil) throw new ApiError(400, 'Selecione o perfil: Portaria ou Administração.')
-  const body = { nome: form.name?.trim(), cpf: form.cpf?.trim(), email: form.email?.trim() || '', telefone: form.phone?.trim() || '', perfil }
+  // Síndico que também mora no condomínio: unidade e vínculo, como um morador (a portaria não tem unidade)
+  let apartamentoId = null
+  let vinculo = null
+  if (perfil === 'ADMIN' && form.livesHere) {
+    const unit = units.find((item) => item.number === String(form.unit || '').trim() && (item.tower || '') === (form.tower || ''))
+    if (!unit) throw new ApiError(400, 'Selecione a unidade onde o síndico mora.')
+    if (!['PROPRIETARIO', 'INQUILINO'].includes(form.relation)) throw new ApiError(400, 'Selecione o vínculo com a unidade: proprietário ou inquilino.')
+    apartamentoId = unit.id
+    vinculo = form.relation
+  }
+  const body = { nome: form.name?.trim(), cpf: form.cpf?.trim(), email: form.email?.trim() || '', telefone: form.phone?.trim() || '', perfil, apartamentoId, vinculo }
   return editingId ? apiPut(`/usuarios/${editingId}`, body, options) : apiPost('/usuarios', body, options)
 }
 

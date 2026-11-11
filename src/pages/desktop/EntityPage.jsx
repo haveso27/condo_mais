@@ -109,9 +109,18 @@ function EntityModule({ role, type }) {
   const ticketCategoryNames = (data.ticketCategories || []).map((category) => category.name)
   // Opções de torre vêm do banco; vínculos da unidade são geridos pelo cadastro de moradores.
   // Encomenda: a unidade é escolhida entre as da torre selecionada; condomínio sem torres não pede torre.
-  const packageUnitOptions = remotePackages || remoteVisitors
+  const packageUnitOptions = remotePackages || remoteVisitors || staffPage
     ? (data.units || []).filter((unit) => (unit.tower || '') === (form.tower || '')).map((unit) => unit.number).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }))
     : []
+  // Síndico que também mora no condomínio: unidade e vínculo no cadastro dele (dá acesso à visão de morador)
+  const residentAdminFields = [
+    { key: 'livesHere', label: 'Mora no condomínio (também usa a visão de morador)', type: 'checkbox' },
+    ...(form.livesHere ? [
+      ...(towerNames.length ? [{ key: 'tower', label: 'Torre / Bloco onde mora', type: 'select', options: towerNames, required: true }] : []),
+      { key: 'unit', label: 'Apartamento onde mora', type: 'search', options: packageUnitOptions, required: true, placeholder: 'Digite para buscar a unidade' },
+      { key: 'relation', label: 'Vínculo com a unidade', type: 'select', options: ['PROPRIETARIO', 'INQUILINO'], required: true },
+    ] : []),
+  ]
   const baseFields = remoteMode
     ? config.fields
       .filter((field) => !(config.collection === 'units' && ['owner', 'resident'].includes(field.key)))
@@ -135,6 +144,7 @@ function EntityModule({ role, type }) {
       .flatMap((field) => remotePackages && role === 'portaria' && field.key === 'code'
         ? [{ key: 'noRecipient', label: 'Destinatário não identificado (sem apartamento na etiqueta)', type: 'checkbox' }, field]
         : [field])
+      .flatMap((field) => staffPage && field.key === 'phone' && form.role === 'ADMIN' ? [field, ...residentAdminFields] : [field])
       // Comunicado do admin: pode se referir a um chamado, pelo campo ou mencionando @código no texto
       .flatMap((field) => remoteNotices && role === 'admin' && field.key === 'content'
         ? [{ ...field, hint: mentionHint(form.content, data.tickets) }, { key: 'ticket', label: 'Chamado relacionado (opcional)', type: 'search', options: (data.tickets || []).map(ticketOption), placeholder: 'Busque pelo código ou pelo título' }]

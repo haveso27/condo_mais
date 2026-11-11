@@ -57,6 +57,9 @@ export function MorePage() {
 const visitorFields = [{ key: 'name', label: 'Nome do visitante', required: true }, { key: 'cpf', label: 'CPF', required: true }, { key: 'phone', label: 'Telefone' }, { key: 'startDate', label: 'Data de início', type: 'date', required: true }, { key: 'startTime', label: 'Horário de início', type: 'timeselect', required: true }, { key: 'endDate', label: 'Data de término', type: 'date', required: true }, { key: 'endTime', label: 'Horário de término', type: 'timeselect', required: true }, { key: 'notes', label: 'Observação', type: 'textarea' }]
 const reservationFields = [{ key: 'area', label: 'Área comum', type: 'select', options: commonAreas, required: true }, { key: 'date', label: 'Data', type: 'date', required: true }, { key: 'startTime', label: 'Horário inicial', type: 'timeselect', required: true }, { key: 'endTime', label: 'Horário final', type: 'timeselect', required: true }, { key: 'endDate', label: 'Termina no dia (só se passar da meia-noite)', type: 'date' }, { key: 'notes', label: 'Observação', type: 'textarea' }]
 
+// Morador recebe só os dele do servidor; o síndico (admin com unidade) recebe todos e vê aqui só os que abriu
+const ownTicket = (ticket, resident) => resident.profile !== 'ADMIN' || ticket.requesterId === resident.id
+
 function ticketFields(resident, units) {
   const ownLocation = `Unidade ${resident.unit} · ${resident.tower}`
   const towers = [...new Set(units.map((item) => item.tower))]
@@ -122,7 +125,8 @@ function ResidentListModule({ type }) {
     if (type === 'visitantes') return visitantesService.listar(data.visitors, { unit: data.currentResident.unit, tower: data.currentResident.tower, statuses })
     if (type === 'reservas' || type === 'aprovacoes') return reservasService.listar(data.reservations, { unit: data.currentResident.unit, tower: data.currentResident.tower, statuses })
     // Na API o servidor já entrega só os chamados que o morador abriu (ocorrências privadas)
-    return data.tickets.filter((item) => (remoteTickets || sameUnit(item, data.currentResident)) && (!statuses.length || statuses.includes(item.status)))
+    // O síndico na visão de morador recebe todos os chamados do condomínio: aqui aparecem só os que ele abriu
+    return data.tickets.filter((item) => (remoteTickets ? ownTicket(item, data.currentResident) : sameUnit(item, data.currentResident)) && (!statuses.length || statuses.includes(item.status)))
   }, [data, statuses, type, remoteTickets])
   const remoteAvailability = () => {
     if (occupation.key !== occupationKey) return { available: false, message: 'Verificando disponibilidade...' }
@@ -230,7 +234,7 @@ function ResidentListModule({ type }) {
   }
   if (type === 'aprovacoes' && !data.currentResident.isOwner) return <ResidentLayout><section className="resident-page"><ResidentPageHeader backTo="/morador/mais" title="Aprovações" subtitle="Acesso exclusivo para proprietários." /><EmptyState title="Seu vínculo não possui permissão para aprovar reservas." /></section></ResidentLayout>
   const collection = type === 'visitantes' ? 'visitors' : type === 'chamados' ? 'tickets' : 'reservations'
-  const ownRecords = remoteTickets ? data.tickets : data[collection].filter((item) => sameUnit(item, data.currentResident))
+  const ownRecords = remoteTickets ? data.tickets.filter((item) => ownTicket(item, data.currentResident)) : data[collection].filter((item) => sameUnit(item, data.currentResident))
   function openDetails(record) {
     setDetails(record); setComment('')
     if (remoteTickets) refreshTicket(record.id)

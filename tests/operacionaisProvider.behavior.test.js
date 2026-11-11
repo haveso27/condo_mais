@@ -545,3 +545,35 @@ test('portaria registra encomenda sem destinatário e só entrega com nome, cód
   assert.deepEqual(calls.find((call) => call.method === 'PUT' && call.path === '/portaria/encomendas/e-1/retirada').body,
     { retiranteNome: 'Maria Lima', codigoConferencia: 'br777', apartamentoInformadoId: 'a-101' })
 })
+
+const sindicoMorador = { ...admin, apartamentoId: 'a-101', apartamentoNumero: '101', torreNome: 'Torre A', vinculo: 'PROPRIETARIO' }
+
+test('síndico que mora no condomínio tem o atalho para a visão morador; sem unidade, não', async () => {
+  const { MemoryRouter } = await import('react-router-dom')
+  const { default: EntityPage } = await server.ssrLoadModule('/src/pages/desktop/EntityPage.jsx')
+  sessionStorage.setItem('condoplus.token', jwt({ perfil: 'ADMIN', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 }))
+
+  fakeApi({ me: sindicoMorador })
+  let view = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(EntityPage, { role: 'admin', type: 'chamadosAdmin' }))))
+  const atalho = await view.findAllByRole('link', { name: 'Visão morador' })
+  assert.equal(atalho[0].getAttribute('href'), '/morador')
+  cleanup()
+
+  fakeApi({ me: admin })
+  view = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(EntityPage, { role: 'admin', type: 'chamadosAdmin' }))))
+  assert.ok(await view.findByText('Vazamento na garagem', {}, { timeout: 2000 }).catch(() => true))
+  await waitFor(() => assert.equal(view.queryAllByRole('link', { name: 'Visão morador' }).length, 0))
+})
+
+test('na visão morador, o síndico volta para a administração e vê só os chamados que abriu', async () => {
+  const { MemoryRouter } = await import('react-router-dom')
+  const { ResidentListPage } = await server.ssrLoadModule('/src/pages/morador/ResidentPages.jsx')
+  fakeApi({ me: sindicoMorador, tickets: [chamado('c-1', 'ABERTO'), chamado('c-2', 'ABERTO', { titulo: 'Lâmpada do hall', solicitanteId: 'u-adm', solicitanteNome: 'Admin' })] })
+  sessionStorage.setItem('condoplus.token', jwt({ perfil: 'ADMIN', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 }))
+  const view = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(ResidentListPage, { type: 'chamados' }))))
+
+  assert.ok(await view.findByText('Lâmpada do hall'))
+  // O chamado aberto por outra pessoa não aparece, mesmo o síndico recebendo todos como administrador
+  assert.equal(view.queryByText('Vazamento na garagem'), null)
+  assert.ok(view.getByRole('button', { name: 'Visão administrador' }))
+})

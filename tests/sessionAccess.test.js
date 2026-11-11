@@ -194,3 +194,13 @@ test('resolver consulta /usuarios/me e mantém falhas fechadas', async () => {
   const expired = await resolveSessionAccess({ area: SESSION_AREA.ADMIN, token, loadCurrentUser: async () => { throw new ApiError(401, 'Expirada') } })
   assert.deepEqual(expired, { status: SESSION_ACCESS.NO_SESSION, destination: '/' })
 })
+
+test('síndico que mora no condomínio também acessa a área do morador', () => {
+  const token = jwt({ perfil: 'ADMIN', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 })
+  const sindico = { perfil: 'ADMIN', configuracaoInicial: 'CONCLUIDA', apartamentoId: 'a-101' }
+  assert.equal(decideSessionAccess({ token, user: sindico, area: SESSION_AREA.MORADOR }).status, SESSION_ACCESS.ALLOWED)
+  assert.equal(decideSessionAccess({ token, user: sindico, area: SESSION_AREA.ADMIN }).status, SESSION_ACCESS.ALLOWED)
+  // Sem unidade, ou com a configuração pendente, volta para a área dele
+  assert.deepEqual(decideSessionAccess({ token, user: { ...sindico, apartamentoId: null }, area: SESSION_AREA.MORADOR }), { status: SESSION_ACCESS.REDIRECT, destination: '/admin' })
+  assert.equal(decideSessionAccess({ token, user: { ...sindico, configuracaoInicial: 'PENDENTE' }, area: SESSION_AREA.MORADOR }).status, SESSION_ACCESS.REDIRECT)
+})

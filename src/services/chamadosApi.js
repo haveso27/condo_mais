@@ -36,6 +36,7 @@ export function toTicket(chamado) {
     tower,
     location: chamado.apartamentoId ? `Unidade ${[unit, tower].filter(Boolean).join(' · ')}` : 'Área comum',
     resident: chamado.solicitanteNome || '',
+    requesterId: chamado.solicitanteId || '',
     priority: String(chamado.prioridade || 'NORMAL').toUpperCase(),
     status: statusFromApi(chamado.status),
     openedAt: packageTimeLabel(chamado.dataAbertura),
