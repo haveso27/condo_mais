@@ -21,7 +21,7 @@ test('reserva da API vira reserva da tela, com horários HH:mm e status das abas
   const reserva = { id: 'r-1', areaId: 'ar-1', areaNome: 'Salão', dataReserva: '2026-11-02', horarioInicio: '18:00:00', horarioFim: '22:30', status: 'AGUARDANDO APROVACAO', moradorNome: 'Carla', apartamentoNumero: '101', torreNome: null, aprovadorNome: null }
   assert.deepEqual(toReservation(reserva, now), {
     id: 'r-1', area: 'Salão', areaId: 'ar-1', resident: 'Carla', tower: '', unit: '101', date: '2026-11-02', endDate: '',
-    startTime: '18:00', endTime: '22:30', approvedBy: '', status: 'AGUARDANDO_APROVACAO',
+    startTime: '18:00', endTime: '22:30', approvedBy: '', fee: '', paymentInstructions: '', paidBy: '', status: 'AGUARDANDO_APROVACAO',
   })
 })
 
@@ -91,10 +91,24 @@ test('ocupação, pedido e mudanças de status usam as rotas do backend', async 
   assert.equal(JSON.parse(calls[2].init.body).dataFim, '2026-11-03')
   await assert.rejects(solicitarReserva({ area: 'Outra' }, [], { fetchImpl }), (error) => error.status === 400)
 
-  for (const [status, route] of [['CONFIRMADA', 'aprovar'], ['RECUSADA', 'recusar'], ['CANCELADA', 'cancelar']]) {
+  for (const [status, route] of [['CONFIRMADA', 'aprovar'], ['RECUSADA', 'recusar'], ['CANCELADA', 'cancelar'], ['PAGAMENTO_CONFIRMADO', 'confirmar-pagamento']]) {
     await alterarStatusReserva('r-1', status, { fetchImpl })
     assert.equal(calls.at(-1).init.method, 'PUT')
     assert.equal(calls.at(-1).url.endsWith(`/interativo/reservas/r-1/${route}`), true)
   }
   assert.throws(() => alterarStatusReserva('r-1', 'CONCLUIDA', { fetchImpl }), (error) => error.status === 400)
+})
+
+test('área paga e reserva aguardando pagamento: taxa formatada, como pagar e quem confirmou', () => {
+  const area = toArea({ id: 'a', nome: 'Salão', reservavel: true, ativo: true, taxa: 150, instrucoesPagamento: 'Pix do condomínio' })
+  assert.match(area.fee, /^R\$\s?150,00$/)
+  assert.equal(area.feeValue, '150')
+  assert.equal(area.paymentInstructions, 'Pix do condomínio')
+  assert.equal(toArea({ id: 'b', nome: 'Quadra', reservavel: true, ativo: true }).fee, '')
+
+  const reserva = toReservation({ id: 'r', areaNome: 'Salão', dataReserva: '2099-12-20', horarioInicio: '18:00', horarioFim: '22:00', status: 'AGUARDANDO PAGAMENTO',
+    valorTaxa: 150, instrucoesPagamento: 'Pix do condomínio', pagamentoConfirmadoPorNome: null })
+  assert.equal(reserva.status, 'AGUARDANDO_PAGAMENTO')
+  assert.match(reserva.fee, /150,00/)
+  assert.equal(reserva.paymentInstructions, 'Pix do condomínio')
 })

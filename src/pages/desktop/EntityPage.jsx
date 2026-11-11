@@ -152,7 +152,7 @@ function EntityModule({ role, type }) {
     : config.fields
   // Área comum: a aprovação só aparece para área que pode ser reservada.
   // Unidade: OCUPADO vem dos moradores; a ocupada só mostra esse status e as demais não podem escolhê-lo.
-  const fields = (areasPage && !form.bookable ? baseFields.filter((field) => field.key !== 'requiresApproval') : baseFields)
+  const fields = (areasPage && !form.bookable ? baseFields.filter((field) => !['requiresApproval', 'feeValue', 'paymentInstructions'].includes(field.key)) : baseFields)
     .map((field) => config.collection === 'units' && field.key === 'status' ? unitStatusField(field, editing) : field)
 
   useEffect(() => { setComment('') }, [details?.id])
@@ -318,7 +318,7 @@ function EntityModule({ role, type }) {
       if (!ok) return
       setPendingAction(null)
       setDetails(null)
-      flash(status === 'CONFIRMADA' ? 'Reserva aprovada.' : status === 'RECUSADA' ? 'Reserva recusada.' : 'Reserva cancelada.')
+      flash(status === 'PAGAMENTO_CONFIRMADO' ? 'Pagamento confirmado. A reserva está confirmada.' : status === 'CONFIRMADA' ? 'Reserva aprovada.' : status === 'RECUSADA' ? 'Reserva recusada.' : 'Reserva cancelada.')
       return
     }
     if (remoteNotices && action === 'noticeDelete') {
@@ -395,6 +395,7 @@ function EntityModule({ role, type }) {
     }
     if (config.collection === 'packages' && role === 'portaria' && record.status === 'AGUARDANDO_RETIRADA') return <button className="primary-button" onClick={() => requestAction('package', record, 'Confirmar retirada', 'RETIRADA')}>Confirmar retirada</button>
     if (remoteReservations && record.status === 'AGUARDANDO_APROVACAO') return <><button className="primary-button" onClick={() => requestAction('reservation', record, 'Aprovar reserva', 'CONFIRMADA')}>Aprovar</button><button className="danger-button" onClick={() => requestAction('reservation', record, 'Recusar reserva', 'RECUSADA')}>Recusar</button><button className="danger-button" onClick={() => requestAction('reservation', record, 'Cancelar reserva', 'CANCELADA')}>Cancelar excepcionalmente</button></>
+    if (remoteReservations && record.status === 'AGUARDANDO_PAGAMENTO') return role === 'admin' ? <><button className="primary-button" onClick={() => requestAction('reservation', record, 'Confirmar pagamento', 'PAGAMENTO_CONFIRMADO')}>Confirmar pagamento</button><button className="danger-button" onClick={() => requestAction('reservation', record, 'Cancelar reserva', 'CANCELADA')}>Cancelar reserva</button></> : null
     if (remoteReservations && record.status !== 'CONFIRMADA') return null
     if (config.collection === 'reservations' && !['CANCELADA', 'CONCLUIDA'].includes(record.status)) return <button className="danger-button" onClick={() => requestAction('reservation', record, 'Cancelar reserva', 'CANCELADA')}>Cancelar excepcionalmente</button>
     if (areasPage) return <><button className="secondary-button" onClick={() => startEdit(record)}>Editar</button><button className={record.status === 'ATIVO' ? 'danger-button' : 'primary-button'} onClick={() => requestAction('area', record, record.status === 'ATIVO' ? 'Desativar área comum' : 'Reativar área comum', record.status === 'ATIVO' ? 'AREA_INATIVA' : 'ATIVO')}>{record.status === 'ATIVO' ? 'Desativar' : 'Reativar'}</button></>

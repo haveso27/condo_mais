@@ -107,9 +107,9 @@ function fakeApi({ packages = [], packagesStatus = 200, me = { id: 'u-1', nome: 
     if (path === '/interativo/reservas/ocupacao') return reply(200, [{ horarioInicio: '18:00:00', horarioFim: '22:00:00', status: 'CONFIRMADA' }])
     if (path === '/interativo/reservas' && method === 'GET') return reply(200, bookings)
     if (path === '/interativo/reservas' && method === 'POST') { bookings = [reserva('r-new', 'AGUARDANDO APROVACAO'), ...bookings]; return reply(200, bookings[0]) }
-    if (/^\/interativo\/reservas\/[^/]+\/(aprovar|recusar|cancelar)$/.test(path)) {
+    if (/^\/interativo\/reservas\/[^/]+\/(aprovar|recusar|cancelar|confirmar-pagamento)$/.test(path)) {
       const [, , , id, action] = path.split('/')
-      const status = { aprovar: 'CONFIRMADA', recusar: 'RECUSADA', cancelar: 'CANCELADA' }[action]
+      const status = { aprovar: 'CONFIRMADA', recusar: 'RECUSADA', cancelar: 'CANCELADA', 'confirmar-pagamento': 'CONFIRMADA' }[action]
       bookings = bookings.map((item) => item.id === id ? { ...item, status } : item)
       return reply(200, bookings.find((item) => item.id === id))
     }
@@ -419,7 +419,7 @@ test('tela de áreas comuns do admin: cadastra, liga a reserva de uma área exis
   fireEvent.click(view.getByRole('button', { name: 'Salvar' }))
   await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/condominios/areas-comuns')))
   assert.deepEqual(calls.find((call) => call.method === 'POST' && call.path === '/condominios/areas-comuns').body,
-    { nome: 'Churrasqueira', descricao: null, regras: null, reservavel: true, exigeAprovacao: true, capacidade: 20 })
+    { nome: 'Churrasqueira', descricao: null, regras: null, reservavel: true, exigeAprovacao: true, capacidade: 20, taxa: null, instrucoesPagamento: null })
   assert.ok(await view.findByText('Churrasqueira'))
 
   // Área sugerida pelo wizard (não reservável) passa a aceitar reservas
@@ -576,4 +576,21 @@ test('na visão morador, o síndico volta para a administração e vê só os ch
   // O chamado aberto por outra pessoa não aparece, mesmo o síndico recebendo todos como administrador
   assert.equal(view.queryByText('Vazamento na garagem'), null)
   assert.ok(view.getByRole('button', { name: 'Visão administrador' }))
+})
+
+test('admin confirma o pagamento de uma reserva que aguarda pagamento', async () => {
+  const calls = fakeApi({ me: admin, reservations: [reserva('r-1', 'AGUARDANDO PAGAMENTO', { valorTaxa: 150, instrucoesPagamento: 'Pix do condomínio' })] })
+  sessionStorage.setItem('condoplus.token', jwt({ perfil: 'ADMIN', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 }))
+  const { fireEvent } = await import('@testing-library/react')
+  const { MemoryRouter } = await import('react-router-dom')
+  const { default: EntityPage } = await server.ssrLoadModule('/src/pages/desktop/EntityPage.jsx')
+  const view = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(EntityPage, { role: 'admin', type: 'reservas' }))))
+
+  assert.ok(await view.findByText('Salão de Festas'))
+  fireEvent.click(view.getByRole('button', { name: 'Ver detalhes' }))
+  assert.ok(view.getByText('Pix do condomínio'))
+  fireEvent.click(view.getAllByRole('button', { name: 'Confirmar pagamento' }).at(-1))
+  fireEvent.click(view.getAllByRole('button', { name: 'Confirmar pagamento' }).at(-1))
+  await waitFor(() => assert.ok(calls.some((call) => call.method === 'PUT' && call.path === '/interativo/reservas/r-1/confirmar-pagamento')))
+  assert.ok(await view.findByText('Pagamento confirmado. A reserva está confirmada.'))
 })
