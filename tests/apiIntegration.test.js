@@ -179,21 +179,32 @@ test('usuários de portaria e administração viram a equipe; perfis legados con
   const { residents, staff } = await carregarCadastros({ fetchImpl })
   assert.deepEqual(residents.map((resident) => resident.id), ['u-1'])
   assert.deepEqual(staff.map((member) => [member.id, member.role, member.status]), [['p-1', 'PORTARIA', 'ATIVO'], ['p-2', 'PORTARIA', 'ATIVO'], ['adm', 'ADMIN', 'INATIVO']])
-  assert.deepEqual(toStaff(porteiro), { id: 'p-1', name: 'José', cpf: '111.444.777-35', email: '', phone: '', role: 'PORTARIA', status: 'ATIVO', pendingFirstAccess: true })
+  assert.deepEqual(toStaff(porteiro), { id: 'p-1', name: 'José', cpf: '111.444.777-35', email: '', phone: '', role: 'PORTARIA', status: 'ATIVO', pendingFirstAccess: true, livesHere: false, tower: '', unit: '', relation: '' })
   assert.equal(staffRole('MORADOR'), '')
 })
 
-test('cadastro da equipe manda o perfil sem unidade nem vínculo', async () => {
+test('cadastro da equipe: portaria sem unidade; síndico com unidade e vínculo quando mora no condomínio', async () => {
   setToken(fakeJwt({ condominio_id: 'c-1' }))
   const { fetchImpl, calls } = fakeFetch([['/usuarios', 200, {}]])
   const form = { name: ' José ', cpf: '111.444.777-35', role: 'PORTARIA', email: '', phone: ' 81999990000 ' }
-  await salvarUsuarioEquipe(form, undefined, { fetchImpl })
-  await salvarUsuarioEquipe({ ...form, role: 'ADMIN' }, 'p-1', { fetchImpl })
+  await salvarUsuarioEquipe(form, undefined, [], { fetchImpl })
+  await salvarUsuarioEquipe({ ...form, role: 'ADMIN' }, 'p-1', [], { fetchImpl })
   assert.deepEqual(calls.map((call) => [call.init.method, call.url.replace(/^.*(\/usuarios)/, '$1')]), [['POST', '/usuarios'], ['PUT', '/usuarios/p-1']])
-  assert.deepEqual(JSON.parse(calls[0].init.body), { nome: 'José', cpf: '111.444.777-35', email: '', telefone: '81999990000', perfil: 'PORTARIA' })
+  assert.deepEqual(JSON.parse(calls[0].init.body), { nome: 'José', cpf: '111.444.777-35', email: '', telefone: '81999990000', perfil: 'PORTARIA', apartamentoId: null, vinculo: null })
   assert.equal(JSON.parse(calls[1].init.body).perfil, 'ADMIN')
-  await assert.rejects(salvarUsuarioEquipe({ ...form, role: 'MORADOR' }, undefined, { fetchImpl }), (error) => error.status === 400 && /perfil/.test(error.message))
+  assert.equal(JSON.parse(calls[1].init.body).apartamentoId, null)
+  await assert.rejects(salvarUsuarioEquipe({ ...form, role: 'MORADOR' }, undefined, [], { fetchImpl }), (error) => error.status === 400 && /perfil/.test(error.message))
   assert.equal(calls.length, 2)
+
+  // Síndico que mora no condomínio: unidade (torre + número) e vínculo; sem eles, não envia
+  const units = [{ id: 'a-101', tower: 'Torre A', number: '101' }]
+  await salvarUsuarioEquipe({ ...form, role: 'ADMIN', livesHere: true, tower: 'Torre A', unit: '101', relation: 'PROPRIETARIO' }, undefined, units, { fetchImpl })
+  assert.deepEqual([JSON.parse(calls[2].init.body).apartamentoId, JSON.parse(calls[2].init.body).vinculo], ['a-101', 'PROPRIETARIO'])
+  await assert.rejects(salvarUsuarioEquipe({ ...form, role: 'ADMIN', livesHere: true, tower: 'Torre A', unit: '999', relation: 'PROPRIETARIO' }, undefined, units, { fetchImpl }), (error) => /unidade/.test(error.message))
+  await assert.rejects(salvarUsuarioEquipe({ ...form, role: 'ADMIN', livesHere: true, tower: 'Torre A', unit: '101' }, undefined, units, { fetchImpl }), (error) => /vínculo/.test(error.message))
+  // Porteiro nunca leva unidade, mesmo se o formulário tiver
+  await salvarUsuarioEquipe({ ...form, livesHere: true, tower: 'Torre A', unit: '101', relation: 'PROPRIETARIO' }, undefined, units, { fetchImpl })
+  assert.equal(JSON.parse(calls[3].init.body).apartamentoId, null)
 })
 
 test('resposta 200 sem corpo (ex.: DELETE) não quebra', async () => {

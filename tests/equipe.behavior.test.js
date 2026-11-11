@@ -53,7 +53,8 @@ function fakeApi() {
       users = users.map((user) => user.id === id ? { ...user, status: action === 'ativar' ? 'ATIVO' : 'INATIVO' } : user)
       return reply(200, users.find((user) => user.id === id))
     }
-    if (path === '/condominios/torres' || path === '/condominios/apartamentos') return reply(200, [])
+    if (path === '/condominios/torres') return reply(200, [{ id: 't-a', nome: 'Torre A' }])
+    if (path === '/condominios/apartamentos') return reply(200, [{ id: 'a-101', numero: '101', torreId: 't-a', status: 'OCUPADO' }])
     return reply(200, [])
   }
   return calls
@@ -83,7 +84,7 @@ test('tela de equipe: lista só portaria/administração e cadastra um porteiro 
   fireEvent.click(view.getByRole('button', { name: 'Salvar' }))
 
   await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/usuarios')))
-  assert.deepEqual(calls.find((call) => call.method === 'POST').body, { nome: 'José Porteiro', cpf: '111.444.777-35', email: '', telefone: '', perfil: 'PORTARIA' })
+  assert.deepEqual(calls.find((call) => call.method === 'POST').body, { nome: 'José Porteiro', cpf: '111.444.777-35', email: '', telefone: '', perfil: 'PORTARIA', apartamentoId: null, vinculo: null })
   assert.ok(await view.findByText('José Porteiro'))
   assert.ok(view.getByText('Primeiro acesso pendente'))
   assert.ok(view.getByText(/já pode fazer o primeiro acesso/))
@@ -114,4 +115,26 @@ test('tela de equipe: desativar um usuário chama a API e atualiza o status', as
 
   await waitFor(() => assert.ok(calls.some((call) => call.method === 'PUT' && call.path === '/usuarios/u-adm/desativar')))
   assert.ok(await view.findByText(/não consegue mais entrar/))
+})
+
+test('tela de equipe: síndico que mora no condomínio leva unidade e vínculo', async () => {
+  const calls = fakeApi()
+  const view = renderPage()
+  assert.ok(await view.findByText('Admin'))
+
+  fireEvent.click(view.getByRole('button', { name: /Cadastrar usuário/ }))
+  // Porteiro não tem a opção de morar no condomínio
+  assert.equal(view.queryByLabelText(/Mora no condomínio/), null)
+  fireEvent.change(view.getByRole('combobox', { name: /^Perfil/ }), { target: { value: 'ADMIN' } })
+  fireEvent.change(view.getByLabelText(/^Nome/), { target: { value: 'Síndico Morador' } })
+  fireEvent.change(view.getByLabelText(/^CPF/), { target: { value: '111.444.777-35' } })
+  fireEvent.click(view.getByLabelText(/Mora no condomínio/))
+  fireEvent.change(view.getByLabelText(/Torre \/ Bloco onde mora/), { target: { value: 'Torre A' } })
+  fireEvent.change(view.getByLabelText(/Apartamento onde mora/), { target: { value: '101' } })
+  fireEvent.change(view.getByLabelText(/Vínculo com a unidade/), { target: { value: 'INQUILINO' } })
+  fireEvent.click(view.getByRole('button', { name: 'Salvar' }))
+
+  await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/usuarios')))
+  const body = calls.find((call) => call.method === 'POST' && call.path === '/usuarios').body
+  assert.deepEqual([body.perfil, body.apartamentoId, body.vinculo], ['ADMIN', 'a-101', 'INQUILINO'])
 })

@@ -62,6 +62,12 @@ export async function loadSessionBeforeOperational({
   return { status: 'operational', session, operational }
 }
 
+// Administrador com unidade vinculada e condomínio configurado: também é morador
+export function isResidentAdmin(user) {
+  return normalizeProfile(user?.perfil) === 'ADMIN' && Boolean(user?.apartamentoId)
+    && normalizeSetupState(user?.configuracaoInicial) === 'CONCLUIDA'
+}
+
 export function sessionHome(user) {
   const profile = normalizeProfile(user?.perfil)
   if (profile === 'MASTER') return '/plataforma'
@@ -107,6 +113,8 @@ export function decideSessionAccess({ token, user, area, now = Date.now() }) {
 
   const expectedProfile = area === SESSION_AREA.PORTARIA ? 'PORTARIA' : area === SESSION_AREA.MORADOR ? 'MORADOR' : ''
   if (!expectedProfile) return { status: SESSION_ACCESS.UNKNOWN, destination: '' }
+  // O síndico que também mora no condomínio (admin com unidade) usa a visão de morador
+  if (area === SESSION_AREA.MORADOR && isResidentAdmin(user)) return { status: SESSION_ACCESS.ALLOWED, destination: '' }
   return profile === expectedProfile ? { status: SESSION_ACCESS.ALLOWED, destination: '' } : redirectToOwnArea(user)
 }
 

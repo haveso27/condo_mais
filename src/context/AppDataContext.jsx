@@ -33,7 +33,7 @@ function historyEntry(type, reference, unit, user = 'João Oliveira') {
 
 // Com a API ligada, nada de demonstração aparece: cadastros e usuário logado vêm do servidor, e os
 // módulos ainda não integrados começam vazios (em vez de mostrar dados fictícios como se fossem reais).
-const emptyResident = { id: '', name: '', cpf: '', email: '', phone: '', tower: '', unit: '', relation: '', isOwner: false, status: 'ATIVO' }
+const emptyResident = { id: '', name: '', cpf: '', email: '', phone: '', tower: '', unit: '', relation: '', isOwner: false, status: 'ATIVO', profile: '' }
 export const apiInitialData = {
   ...initialAppData,
   currentResident: emptyResident,
@@ -183,7 +183,7 @@ export function AppDataProvider({ children }) {
     deleteUnitRemote: (id) => command(() => excluirUnidade(id)),
     saveResidentRemote: (form, editingId) => command(() => salvarMorador(form, editingId, dataRef.current.units)),
     setResidentStatusRemote: (id, status) => command(() => alterarStatusMorador(id, status)),
-    saveStaffRemote: (form, editingId) => command(() => salvarUsuarioEquipe(form, editingId)),
+    saveStaffRemote: (form, editingId) => command(() => salvarUsuarioEquipe(form, editingId, dataRef.current.units)),
     setStaffStatusRemote: (id, status) => command(() => alterarStatusMorador(id, status)),
     addPackageRemote: (form) => collectionCommand('packages', () => registrarEncomenda(form, dataRef.current.units)),
     withdrawPackageRemote: (record, pickup) => collectionCommand('packages', () => registrarRetiradaEncomenda(record.id, pickupBody(record, pickup, dataRef.current.units))),
