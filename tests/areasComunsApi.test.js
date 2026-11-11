@@ -14,9 +14,9 @@ globalThis.window = new EventTarget()
 
 test('formulário vira AreaComumDTO; aprovação só para área reservável', () => {
   assert.deepEqual(areaBody({ name: ' Salão ', description: ' ', rules: 'Até 23h', capacity: '80', bookable: true, requiresApproval: true }),
-    { nome: 'Salão', descricao: null, regras: 'Até 23h', reservavel: true, exigeAprovacao: true, capacidade: 80, taxa: null, instrucoesPagamento: null })
+    { nome: 'Salão', descricao: null, regras: 'Até 23h', reservavel: true, exigeAprovacao: true, capacidade: 80, taxa: null, instrucoesPagamento: null, horarioAbertura: null, horarioFechamento: null })
   assert.deepEqual(areaBody({ name: 'Piscina', requiresApproval: true }),
-    { nome: 'Piscina', descricao: null, regras: null, reservavel: false, exigeAprovacao: false, capacidade: null, taxa: null, instrucoesPagamento: null })
+    { nome: 'Piscina', descricao: null, regras: null, reservavel: false, exigeAprovacao: false, capacidade: null, taxa: null, instrucoesPagamento: null, horarioAbertura: null, horarioFechamento: null })
   assert.throws(() => areaBody({ name: ' ' }), (error) => error.status === 400)
   for (const capacity of ['0', '-3', '2.5', 'muitas']) assert.throws(() => areaBody({ name: 'X', capacity }), (error) => error.status === 400, capacity)
 })
@@ -76,4 +76,12 @@ test('taxa da área: vírgula ou ponto, vazia ou zero = gratuita, só para área
   assert.deepEqual([areaBody({ name: 'Hall', bookable: false, feeValue: '10', paymentInstructions: 'x' }).taxa, areaBody({ name: 'Hall', bookable: false, feeValue: '10', paymentInstructions: 'x' }).instrucoesPagamento], [null, null])
   assert.throws(() => areaBody({ name: 'Salão', bookable: true, feeValue: '-1' }), (error) => error.status === 400)
   assert.throws(() => areaBody({ name: 'Salão', bookable: true, feeValue: '10,555' }), (error) => error.status === 400)
+})
+
+test('funcionamento da área: os dois horários ou nenhum, e diferentes', () => {
+  const body = areaBody({ name: 'Salão', bookable: true, openTime: '08:00', closeTime: '02:00' })
+  assert.deepEqual([body.horarioAbertura, body.horarioFechamento], ['08:00', '02:00'])
+  assert.deepEqual([areaBody({ name: 'Quadra' }).horarioAbertura, areaBody({ name: 'Quadra' }).horarioFechamento], [null, null])
+  assert.throws(() => areaBody({ name: 'Salão', openTime: '08:00' }), (error) => error.status === 400)
+  assert.throws(() => areaBody({ name: 'Salão', openTime: '08:00', closeTime: '08:00' }), (error) => /iguais/.test(error.message))
 })

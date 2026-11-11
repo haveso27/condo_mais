@@ -13,6 +13,11 @@ export function areaBody(form) {
   const feeText = String(form.feeValue ?? '').trim().replace(',', '.')
   const fee = bookable && feeText ? Number(feeText) : null
   if (fee !== null && (!Number.isFinite(fee) || fee < 0 || Math.round(fee * 100) !== fee * 100)) throw new ApiError(400, 'A taxa deve ser um valor em reais, com até 2 casas decimais.')
+  // Funcionamento: os dois horários ou nenhum (sem restrição); fechar antes de abrir passa da meia-noite
+  const openTime = String(form.openTime || '').trim()
+  const closeTime = String(form.closeTime || '').trim()
+  if (Boolean(openTime) !== Boolean(closeTime)) throw new ApiError(400, 'Informe o horário de abertura e o de fechamento, ou deixe os dois vazios.')
+  if (openTime && openTime === closeTime) throw new ApiError(400, 'Abertura e fechamento não podem ser iguais. Para funcionar o dia todo, deixe os dois vazios.')
   return {
     nome: name,
     descricao: String(form.description || '').trim() || null,
@@ -22,6 +27,8 @@ export function areaBody(form) {
     capacidade: capacity,
     taxa: fee || null,
     instrucoesPagamento: fee ? String(form.paymentInstructions || '').trim() || null : null,
+    horarioAbertura: openTime || null,
+    horarioFechamento: closeTime || null,
   }
 }
 

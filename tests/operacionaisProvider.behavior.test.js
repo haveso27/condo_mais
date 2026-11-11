@@ -419,7 +419,7 @@ test('tela de áreas comuns do admin: cadastra, liga a reserva de uma área exis
   fireEvent.click(view.getByRole('button', { name: 'Salvar' }))
   await waitFor(() => assert.ok(calls.some((call) => call.method === 'POST' && call.path === '/condominios/areas-comuns')))
   assert.deepEqual(calls.find((call) => call.method === 'POST' && call.path === '/condominios/areas-comuns').body,
-    { nome: 'Churrasqueira', descricao: null, regras: null, reservavel: true, exigeAprovacao: true, capacidade: 20, taxa: null, instrucoesPagamento: null })
+    { nome: 'Churrasqueira', descricao: null, regras: null, reservavel: true, exigeAprovacao: true, capacidade: 20, taxa: null, instrucoesPagamento: null, horarioAbertura: null, horarioFechamento: null })
   assert.ok(await view.findByText('Churrasqueira'))
 
   // Área sugerida pelo wizard (não reservável) passa a aceitar reservas
