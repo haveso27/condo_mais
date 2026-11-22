@@ -1,7 +1,8 @@
 import { CalendarCheck, CheckCircle2, ChevronRight, LogOut, MapPin, Megaphone, Package, Phone, ShieldCheck, TicketCheck, UserRound, UsersRound, Wrench } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import RecordDetails from '../../components/RecordDetails'
+import TicketSteps from '../../components/TicketSteps'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import DynamicForm from '../../components/DynamicForm'
 import EmptyState from '../../components/EmptyState'
@@ -14,7 +15,7 @@ import { logout } from '../../services/authApi'
 import { reservasService } from '../../services/reservasService'
 import { availabilityFromOccupation, bookableAreas, carregarOcupacaoDoPeriodo, operatingHoursError } from '../../services/reservasApi'
 import { TICKET_COMMON_AREA, ticketUnitLabel } from '../../services/chamadosApi'
-import { statusLabel, sameUnit, activeNotices, basicValidation } from '../../services/serviceUtils'
+import { statusLabel, sameUnit, activeNotices, basicValidation, todayIso } from '../../services/serviceUtils'
 import { visitPeriodError, visitantesService } from '../../services/visitantesService'
 import { annotateMentions } from '../../services/comunicadosApi'
 
@@ -90,6 +91,11 @@ function ResidentListModule({ type }) {
   const [pending, setPending] = useState(null)
   const [busy, setBusy] = useState(false)
   const [occupation, setOccupation] = useState({ key: '', slots: null, error: '' })
+  // Autorizar visita: atalhos de data (hoje, amanhã) além dos campos de data
+  const [dayChoice, setDayChoice] = useState('')
+  const location = useLocation()
+  const navigate = useNavigate()
+  const handledNavigation = useRef('')
   const statuses = config.tabs[tab][1]
   const ownLocation = `Unidade ${data.currentResident.unit} · ${data.currentResident.tower}`
   // Com a API ligada, reservas usam as áreas do condomínio e a agenda real (/ocupacao)
@@ -121,6 +127,14 @@ function ResidentListModule({ type }) {
     )
     return () => { current = false }
   }, [occupationKey])
+  // Vindo dos atalhos da tela inicial ("Autorizar visita", "Reservar área", "Abrir chamado"): já abre o formulário
+  useEffect(() => {
+    if (!location.state?.create || handledNavigation.current === location.key || !config.action) return
+    handledNavigation.current = location.key
+    // O pedido sai do histórico: voltar pelo navegador não reabre o formulário
+    navigate(location.pathname, { replace: true, state: null })
+    startCreate()
+  }, [location])
   const records = useMemo(() => {
     if (type === 'visitantes') return visitantesService.listar(data.visitors, { unit: data.currentResident.unit, tower: data.currentResident.tower, statuses })
     if (type === 'reservas' || type === 'aprovacoes') return reservasService.listar(data.reservations, { unit: data.currentResident.unit, tower: data.currentResident.tower, statuses })
@@ -149,6 +163,18 @@ function ResidentListModule({ type }) {
     ? `Esta área tem taxa de ${selectedArea.fee}. ${needsApproval ? 'Depois da aprovação, a' : 'A'} reserva fica aguardando pagamento até a administração confirmar.${selectedArea.paymentInstructions ? ` Como pagar: ${selectedArea.paymentInstructions}` : ''}`
     : ''
   const flash = (message) => { setSuccess(message); setTimeout(() => setSuccess(''), 2500) }
+  function startCreate() {
+    if (type === 'reservas' && !data.condominium.allowResidentBookings) { flash('Solicitações de reserva estão temporariamente indisponíveis.'); return }
+    setForm(type === 'chamados' ? { location: ownLocation } : {}); setError(''); setDayChoice(''); setOpen(true)
+  }
+  function pickDay(choice) {
+    setDayChoice(choice)
+    if (choice === 'outro') return
+    const day = new Date()
+    if (choice === 'amanha') day.setDate(day.getDate() + 1)
+    const iso = todayIso(day)
+    setForm((current) => ({ ...current, startDate: iso, endDate: iso })); setError('')
+  }
   async function save() {
     if (busy) return
     if (type === 'reservas' && !data.condominium.allowResidentBookings) { setError('Solicitações de reserva estão temporariamente indisponíveis.'); return }
@@ -264,9 +290,9 @@ function ResidentListModule({ type }) {
   }
   const emptyFiltered = Boolean(ownRecords.length && statuses.length)
   const Icon = config.icon
-  return <ResidentLayout><section className="resident-page"><ResidentPageHeader backTo="/morador/mais" title={config.title} subtitle={config.subtitle} action={config.action} onAction={() => { if (type === 'reservas' && !data.condominium.allowResidentBookings) { flash('Solicitações de reserva estão temporariamente indisponíveis.'); return } setForm(type === 'chamados' ? { location: ownLocation } : {}); setError(''); setOpen(true) }} /><div className="mobile-tabs">{config.tabs.map(([label], index) => <button aria-pressed={tab === index} className={tab === index ? 'active' : ''} onClick={() => setTab(index)} key={label}>{label}</button>)}</div><h3 className="section-label">{config.title}</h3><div className="resident-card-list">{records.map((record) => { const info = summary(record); return <button key={record.id} onClick={() => openDetails(record)}><Icon size={21} /><span><strong>{record.name || record.area || record.title}</strong><small>{info[0]}</small><small>{info[1]}</small><StatusBadge status={record.status}>{info[2]}</StatusBadge></span><ChevronRight size={16} /></button> })}</div>{records.length === 0 && <EmptyState title={emptyMessage(type === 'aprovacoes' ? 'approvals' : collection, emptyFiltered)} onClear={emptyFiltered && tab > 0 ? () => setTab(0) : undefined} />}</section>
-    <Modal open={open} title={config.action} onClose={() => setOpen(false)} onConfirm={save} confirmLabel={busy ? 'Enviando...' : config.action}><DynamicForm fields={fields} values={form} onChange={(key, value) => { setForm((current) => ({ ...current, [key]: value })); setError('') }} error={error} />{availability && error !== availability.message && <p className={availability.available ? 'availability availability--ok' : 'availability availability--error'}>{availability.message}</p>}{hoursNote && <p className="form-note">{hoursNote}</p>}{feeNote && <p className="form-note">{feeNote}</p>}{approvalNote && <p className="form-note">{approvalNote}</p>}{remoteReservations && type === 'reservas' && !areaOptions.length && <p className="form-note">Nenhuma área comum disponível para reserva no momento.</p>}{type === 'visitantes' && <p className="form-note">Unidade vinculada: {data.currentResident.unit} · {data.currentResident.tower}. Proprietários e inquilinos vinculados podem autorizar.</p>}</Modal>
-    <Modal open={Boolean(details)} title={details ? `Detalhes · ${/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(details.id)) ? details.area || details.name || details.title || '' : details.id}` : 'Detalhes'} onClose={() => setDetails(null)} ><RecordDetails record={details} collection={collection} />{details && remoteVisitors && details.status === 'PENDENTE' && <div className="detail-actions"><button className="primary-button" onClick={() => setPending({ kind: 'visitor', record: details, status: 'AUTORIZADO', label: 'Autorizar visita' })}>Autorizar</button><button className="danger-button" onClick={() => setPending({ kind: 'visitor', record: details, status: 'RECUSADO', label: 'Recusar visita' })}>Recusar</button></div>}{details && remoteVisitors && details.status === 'AUTORIZADO' && <div className="detail-actions"><button className="danger-button" onClick={() => setPending({ kind: 'visitor', record: details, status: 'RECUSADO', label: 'Revogar autorização' })}>Revogar autorização</button></div>}{details && remoteTickets && details.status !== 'ENCERRADO' && <div className="comment-box"><label>Adicionar comentário<textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Escreva uma atualização ou pergunta" /></label><button className="secondary-button" disabled={!comment.trim() || busy} onClick={sendComment}>Adicionar comentário</button></div>}{details && type === 'reservas' && canCancel(details) && <div className="detail-actions"><button className="danger-button" onClick={() => setPending({ kind: 'reservation', record: details, status: 'CANCELADA', label: 'Cancelar reserva' })}>Cancelar reserva</button></div>}{details && (type === 'aprovacoes' || (type === 'reservas' && data.currentResident.isOwner)) && details.status === 'AGUARDANDO_APROVACAO' && <div className="detail-actions"><button className="primary-button" onClick={() => setPending({ kind: 'reservation', record: details, status: 'CONFIRMADA', label: 'Aprovar reserva' })}>Aprovar</button><button className="danger-button" onClick={() => setPending({ kind: 'reservation', record: details, status: 'RECUSADA', label: 'Recusar reserva' })}>Recusar</button></div>}</Modal>
+  return <ResidentLayout><section className="resident-page"><ResidentPageHeader backTo="/morador/mais" title={config.title} subtitle={config.subtitle} action={config.action} onAction={startCreate} /><div className="mobile-tabs">{config.tabs.map(([label], index) => <button aria-pressed={tab === index} className={tab === index ? 'active' : ''} onClick={() => setTab(index)} key={label}>{label}</button>)}</div><h3 className="section-label">{config.title}</h3><div className="resident-card-list">{records.map((record) => { const info = summary(record); return <button key={record.id} onClick={() => openDetails(record)}><Icon size={21} /><span><strong>{record.name || record.area || record.title}</strong><small>{info[0]}</small><small>{info[1]}</small><StatusBadge status={record.status}>{info[2]}</StatusBadge></span><ChevronRight size={16} /></button> })}</div>{records.length === 0 && <EmptyState title={emptyMessage(type === 'aprovacoes' ? 'approvals' : collection, emptyFiltered)} onClear={emptyFiltered && tab > 0 ? () => setTab(0) : undefined} />}</section>
+    <Modal open={open} title={config.action} onClose={() => setOpen(false)} onConfirm={save} confirmLabel={busy ? 'Enviando...' : config.action}>{type === 'visitantes' && <div className="quando"><span id="quando-rotulo">Quando</span><div className="seg seg--cheio" role="group" aria-labelledby="quando-rotulo">{[['hoje', 'Hoje'], ['amanha', 'Amanhã'], ['outro', 'Outro dia']].map(([key, label]) => <button type="button" key={key} aria-pressed={dayChoice === key} className={dayChoice === key ? 'on' : ''} onClick={() => pickDay(key)}>{label}</button>)}</div></div>}<DynamicForm fields={fields} values={form} onChange={(key, value) => { setForm((current) => ({ ...current, [key]: value })); setError('') }} error={error} />{availability && error !== availability.message && <p className={availability.available ? 'availability availability--ok' : 'availability availability--error'}>{availability.message}</p>}{hoursNote && <p className="form-note">{hoursNote}</p>}{feeNote && <p className="form-note">{feeNote}</p>}{approvalNote && <p className="form-note">{approvalNote}</p>}{remoteReservations && type === 'reservas' && !areaOptions.length && <p className="form-note">Nenhuma área comum disponível para reserva no momento.</p>}{type === 'visitantes' && <p className="form-note">A portaria só libera a entrada dentro desse horário, e uma autorização vale por no máximo 30 dias. Unidade vinculada: {data.currentResident.unit} · {data.currentResident.tower}. Proprietários e inquilinos vinculados podem autorizar.</p>}</Modal>
+    <Modal open={Boolean(details)} title={details ? `Detalhes · ${/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(details.id)) ? details.area || details.name || details.title || '' : details.id}` : 'Detalhes'} onClose={() => setDetails(null)} >{details && type === 'chamados' && <TicketSteps status={details.status} openedAt={details.openedAt} />}<RecordDetails record={details} collection={collection} />{details && remoteVisitors && details.status === 'PENDENTE' && <div className="detail-actions"><button className="primary-button" onClick={() => setPending({ kind: 'visitor', record: details, status: 'AUTORIZADO', label: 'Autorizar visita' })}>Autorizar</button><button className="danger-button" onClick={() => setPending({ kind: 'visitor', record: details, status: 'RECUSADO', label: 'Recusar visita' })}>Recusar</button></div>}{details && remoteVisitors && details.status === 'AUTORIZADO' && <div className="detail-actions"><button className="danger-button" onClick={() => setPending({ kind: 'visitor', record: details, status: 'RECUSADO', label: 'Revogar autorização' })}>Revogar autorização</button></div>}{details && remoteTickets && details.status !== 'ENCERRADO' && <div className="comment-box"><label>Adicionar comentário<textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Escreva uma atualização ou pergunta" /></label><button className="secondary-button" disabled={!comment.trim() || busy} onClick={sendComment}>Adicionar comentário</button></div>}{details && type === 'reservas' && canCancel(details) && <div className="detail-actions"><button className="danger-button" onClick={() => setPending({ kind: 'reservation', record: details, status: 'CANCELADA', label: 'Cancelar reserva' })}>Cancelar reserva</button></div>}{details && (type === 'aprovacoes' || (type === 'reservas' && data.currentResident.isOwner)) && details.status === 'AGUARDANDO_APROVACAO' && <div className="detail-actions"><button className="primary-button" onClick={() => setPending({ kind: 'reservation', record: details, status: 'CONFIRMADA', label: 'Aprovar reserva' })}>Aprovar</button><button className="danger-button" onClick={() => setPending({ kind: 'reservation', record: details, status: 'RECUSADA', label: 'Recusar reserva' })}>Recusar</button></div>}</Modal>
     <ConfirmDialog open={Boolean(pending)} title={pending?.label} message={confirmationMessage(pending?.record, pending?.label, pending?.status)} confirmLabel={pending?.label || 'Confirmar'} destructive={['CANCELADA', 'RECUSADA', 'RECUSADO'].includes(pending?.status)} onCancel={() => setPending(null)} onConfirm={confirm} /><div role="status" aria-live="polite" aria-atomic="true">{success && <div className="toast">{success}</div>}</div></ResidentLayout>
 }
 

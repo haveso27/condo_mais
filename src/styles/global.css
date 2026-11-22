@@ -1032,3 +1032,47 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .form-note--warning { background: #fff7df; color: #6b4a0a; border-left-color: #e2b85a; }
 .setup-existing-towers { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-left: var(--junta) solid var(--petroleo); background: #f7f9f8; }
 .setup-existing-towers p { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* ==========================================================================
+   Padrões de decisão: ficha lateral, segmentado e chamado em degraus
+   ========================================================================== */
+/* ficha lateral (detalhes de um registro) */
+.modal-backdrop--drawer { place-items: stretch end; padding: 0; background: #07162d66; }
+.modal--drawer { width: min(100%, 500px); height: 100vh; height: 100dvh; max-height: none; border-top: 0; border-left: 4px solid var(--navy); box-shadow: -18px 0 50px #07162d40; animation: ficha-entra .18s ease-out; }
+@keyframes ficha-entra { from { transform: translateX(28px); opacity: .5; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .modal--drawer { animation: none; } }
+.dlg-aviso { margin: 12px 0 0; color: var(--vinho); font-size: 13px; font-weight: 700; }
+
+/* segmentado (Fachada | Lista, Hoje | Amanhã | Outro dia) */
+.seg { display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 3px; background: #fff; box-shadow: inset 0 0 0 1px #c9d3dc; }
+.seg button { border: 0; background: transparent; padding: 6px 13px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.seg button.on { background: var(--info-bg); color: var(--petroleo); }
+.seg--cheio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+.seg--cheio button { padding: 9px 0; text-align: center; }
+.entity-toolbar__esq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.tab-count { margin-left: 6px; color: inherit; opacity: .7; font-variant-numeric: tabular-nums; font-weight: 600; }
+.quando { display: grid; gap: 7px; margin-bottom: 16px; font-size: 13.5px; font-weight: 600; }
+.compact-navigation nav a .selo { margin-left: auto; }
+
+/* chamado em degraus */
+.trilha { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; align-items: end; margin: 0 0 16px; padding: 14px 14px 12px; list-style: none; background: #fff; border: 1px solid var(--border); overflow-wrap: normal; word-break: normal; }
+.passo { min-width: 0; hyphens: manual; }
+.passo strong { display: block; margin-top: 6px; font-size: 12px; line-height: 1.25; }
+.passo small { display: block; min-height: 15px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.passo__bloco { display: grid; place-items: center; color: #fff; }
+.passo.feito .passo__bloco { background: var(--petroleo); }
+.passo.atual .passo__bloco { background: var(--navy); clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px); }
+.passo.atual .passo__bloco i { color: var(--mais); font: 800 22px/1 var(--fonte-titulo); font-style: normal; }
+.passo.atual strong { color: var(--navy); }
+.passo.futuro .passo__bloco { background: #fff; box-shadow: inset 0 0 0 1.5px var(--border-forte); }
+.passo.futuro strong { color: var(--muted); font-weight: 500; }
+
+@media (max-width: 760px) {
+  /* nowrap: com wrap, cada linha teria a largura do maior item e as abas sairiam da tela em vez de rolar */
+  .entity-toolbar__esq { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  .modal--drawer { width: 100%; border-left: 0; border-top: 4px solid var(--navy); }
+}
+@media (max-width: 470px) {
+  .trilha { padding: 12px 8px 10px; }
+  .passo strong { font-size: 11px; }
+}

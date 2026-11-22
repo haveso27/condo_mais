@@ -4,7 +4,9 @@ import { useEffect, useId, useRef } from 'react'
 const modalStack = []
 const focusable = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex="0"]'
 
-export default function Modal({ open, title, children, onClose, onConfirm, confirmLabel = 'Salvar', intent = 'primary', busy = false }) {
+// variant="drawer": ficha lateral (detalhes de um registro), com o mesmo foco preso e as mesmas saídas do diálogo.
+// confirmDisabled: trava só o botão de confirmar (ex.: até a pessoa digitar o nome da torre que vai excluir).
+export default function Modal({ open, title, children, onClose, onConfirm, confirmLabel = 'Salvar', intent = 'primary', busy = false, variant = 'dialog', confirmDisabled = false }) {
   const titleId = useId()
   const dialogRef = useRef(null)
   const closeRef = useRef(onClose)
@@ -39,11 +41,11 @@ export default function Modal({ open, title, children, onClose, onConfirm, confi
   }, [open])
   if (!open) return null
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={() => closeRef.current()}>
-      <section ref={dialogRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy || undefined} onMouseDown={(event) => event.stopPropagation()}>
+    <div className={`modal-backdrop${variant === 'drawer' ? ' modal-backdrop--drawer' : ''}`} role="presentation" onMouseDown={() => closeRef.current()}>
+      <section ref={dialogRef} tabIndex={-1} className={`modal${variant === 'drawer' ? ' modal--drawer' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy || undefined} onMouseDown={(event) => event.stopPropagation()}>
         <header><h2 id={titleId}>{title}</h2><button type="button" aria-label="Fechar" disabled={busy} onClick={() => closeRef.current()}><X size={20} /></button></header>
         <div className="modal__body">{children}</div>
-        <footer>{onConfirm ? <><button type="button" className="secondary-button" disabled={busy} onClick={() => closeRef.current()}>Cancelar</button><button type="button" className={intent === 'danger' ? 'danger-button' : 'primary-button'} disabled={busy} onClick={() => { if (!busy) onConfirm() }}>{confirmLabel}</button></> : <button type="button" className="secondary-button" disabled={busy} onClick={() => closeRef.current()}>Fechar</button>}</footer>
+        <footer>{onConfirm ? <><button type="button" className="secondary-button" disabled={busy} onClick={() => closeRef.current()}>Cancelar</button><button type="button" className={intent === 'danger' ? 'danger-button' : 'primary-button'} disabled={busy || confirmDisabled} onClick={() => { if (!busy && !confirmDisabled) onConfirm() }}>{confirmLabel}</button></> : <button type="button" className="secondary-button" disabled={busy} onClick={() => closeRef.current()}>Fechar</button>}</footer>
       </section>
     </div>
   )
