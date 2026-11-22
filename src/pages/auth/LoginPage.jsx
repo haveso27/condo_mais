@@ -56,8 +56,8 @@ export default function LoginPage() {
   return (
     <AuthLayout variant="login">
       <div className="auth-heading">
-        <h2>Acesse sua conta</h2>
-        <p>Entre com seu CPF e senha para acessar o Condo+.</p>
+        <h2>Entrar no Condo+</h2>
+        <p>Use o CPF que a administração do seu condomínio cadastrou.</p>
       </div>
       <form ref={formRef} className="login-form" onSubmit={submit} noValidate>
         <label>CPF
@@ -71,8 +71,7 @@ export default function LoginPage() {
         {error && <p id={errorId} className="form-error" role="alert">{error}</p>}
         <button className="primary-button" type="submit" disabled={submitting}>{submitting ? 'Entrando...' : 'Entrar'}</button>
       </form>
-      <div className="divider"><span>ou</span></div>
-      <button className="first-access-link" onClick={() => navigate('/primeiro-acesso')}>É seu primeiro acesso? <strong>Ativar minha conta</strong></button>
+      <button className="first-access-link" onClick={() => navigate('/primeiro-acesso')}>Primeiro acesso? <strong>Ativar minha conta</strong></button>
     </AuthLayout>
   )
 }

@@ -438,7 +438,7 @@ test('tela de áreas comuns do admin: cadastra, liga a reserva de uma área exis
   await waitFor(() => assert.ok(view.getAllByText('Inativo').length >= 2))
 })
 
-test('proprietário vê o aviso de aprovação no painel e aprova pelo detalhe em Minhas reservas', async () => {
+test('proprietário vê o pedido de aprovação no painel, aprova ali mesmo e também pelo detalhe em Minhas reservas', async () => {
   const proprietario = { ...morador, id: 'u-prop', nome: 'Fernandinho', vinculo: 'PROPRIETARIO' }
   const calls = fakeApi({ me: proprietario, reservations: [reserva('r-1', 'AGUARDANDO APROVACAO', { moradorNome: 'Lucas Marques' })] })
   sessionStorage.setItem('condoplus.token', jwt({ perfil: 'MORADOR', condominio_id: 'c-1', exp: Math.floor(Date.now() / 1000) + 3600 }))
@@ -452,19 +452,26 @@ test('proprietário vê o aviso de aprovação no painel e aprova pelo detalhe e
       React.createElement(Route, { path: '/morador/aprovacoes', element: React.createElement('div', null, 'Tela de aprovações') }),
     ))))
 
-  const alert = await view.findByText('1 reserva aguarda sua aprovação')
-  assert.ok(view.getByText(/Salão de Festas · 20\/12 · Lucas Marques/))
-  fireEvent.click(alert)
-  assert.ok(await view.findByText('Tela de aprovações'))
+  // O pedido aparece na fila de novidades da unidade, com quem pediu e a data, e é aprovado ali (com confirmação)
+  assert.ok(await view.findByText('Reserva de Salão de Festas'))
+  assert.ok(view.getByText(/Pedido de Lucas Marques para 20\/12/))
+  assert.ok(view.getByRole('button', { name: 'Recusar' }))
+  const approvals = () => calls.filter((call) => call.method === 'PUT' && call.path === '/interativo/reservas/r-1/aprovar').length
+  fireEvent.click(view.getByRole('button', { name: 'Aprovar' }))
+  fireEvent.click(view.getAllByRole('button', { name: 'Aprovar reserva' }).at(-1))
+  await waitFor(() => assert.equal(approvals(), 1))
+  // Aprovado, o pedido sai da fila (a lista é recarregada da API)
+  await waitFor(() => assert.equal(view.queryByText('Reserva de Salão de Festas'), null))
   cleanup()
 
+  const listCalls = fakeApi({ me: proprietario, reservations: [reserva('r-2', 'AGUARDANDO APROVACAO', { moradorNome: 'Lucas Marques' })] })
   const list = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(ResidentListPage, { type: 'reservas' }))))
   fireEvent.click(await list.findByText('Salão de Festas'))
   // Não foi ele quem pediu: não cancela, mas aprova ou recusa
   assert.equal(list.queryByRole('button', { name: 'Cancelar reserva' }), null)
   fireEvent.click(await list.findByRole('button', { name: 'Aprovar' }))
   fireEvent.click(list.getAllByRole('button', { name: 'Aprovar reserva' }).at(-1))
-  await waitFor(() => assert.ok(calls.some((call) => call.method === 'PUT' && call.path === '/interativo/reservas/r-1/aprovar')))
+  await waitFor(() => assert.ok(listCalls.some((call) => call.method === 'PUT' && call.path === '/interativo/reservas/r-2/aprovar')))
 })
 
 test('inquilino não vê aviso de aprovação nem botões de aprovar', async () => {
@@ -478,7 +485,8 @@ test('inquilino não vê aviso de aprovação nem botões de aprovar', async () 
   await dash.findByText(/Apartamento 101/)
   await waitFor(() => assert.ok(calls.some((call) => call.path === '/interativo/reservas')))
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)) })
-  assert.equal(dash.queryByText(/aguarda sua aprovação/), null)
+  assert.equal(dash.queryByText(/Precisa da sua aprovação/), null)
+  assert.equal(dash.queryByRole('button', { name: 'Aprovar' }), null)
   cleanup()
   const list = render(React.createElement(AppDataProvider, null, React.createElement(MemoryRouter, null, React.createElement(ResidentListPage, { type: 'reservas' }))))
   fireEvent.click(await list.findByText('Salão de Festas'))

@@ -95,7 +95,10 @@ test('erro sem corpo JSON ou sem mensagem usa o texto padrão do status', async 
 
 test('apartamento vira unidade com nome da torre; sem torre fica em branco', () => {
   const towers = { 't-a': 'Torre A' }
-  assert.deepEqual(toUnit({ id: 'ap-1', numero: '203', status: 'ocupado', torreId: 't-a', condominioId: 'c-1' }, towers), { id: 'ap-1', number: '203', tower: 'Torre A', towerId: 't-a', status: 'OCUPADO', owners: [], residents: [] })
+  assert.deepEqual(toUnit({ id: 'ap-1', numero: '203', status: 'ocupado', torreId: 't-a', condominioId: 'c-1' }, towers), { id: 'ap-1', number: '203', tower: 'Torre A', towerId: 't-a', status: 'OCUPADO', floor: null, owners: [], residents: [] })
+  // O andar (gerado pelo Setup Wizard) desenha a fachada; o térreo é o andar 0
+  assert.equal(toUnit({ id: 'ap-3', numero: '001', andar: 0, torreId: 't-a' }, towers).floor, 0)
+  assert.equal(toUnit({ id: 'ap-4', numero: '1204', andar: 12, torreId: 't-a' }, towers).floor, 12)
   assert.equal(toUnit({ id: 'ap-2', numero: '10', status: null, torreId: null }, towers).tower, '')
   assert.equal(toUnit({ id: 'ap-2', numero: '10', status: null, torreId: null }, towers).status, '')
 })
@@ -150,6 +153,9 @@ test('comandos de unidade e torre montam a requisição certa', async () => {
   assert.deepEqual(calls.map((call) => [call.init.method, call.url.replace(/^.*(\/condominios)/, '$1')]), [['POST', '/condominios/torres'], ['POST', '/condominios/apartamentos'], ['PUT', '/condominios/apartamentos/ap-9'], ['DELETE', '/condominios/apartamentos/ap-9']])
   assert.deepEqual(JSON.parse(calls[0].init.body), { nome: 'Torre C', condominioId: 'c-1' })
   assert.deepEqual(JSON.parse(calls[1].init.body), { numero: '301', status: 'LIVRE', torreId: 't-a', condominioId: 'c-1' })
+  // Edição reenvia o andar que a unidade já tem (a API grava o que receber, inclusive nulo)
+  await salvarUnidade({ tower: 'Torre A', number: '301', status: 'LIVRE', floor: 3 }, 'ap-9', towers, { fetchImpl })
+  assert.equal(JSON.parse(calls.at(-1).init.body).andar, 3)
   await assert.rejects(salvarUnidade({ tower: 'Torre Z', number: '1', status: 'LIVRE' }, undefined, towers, { fetchImpl }), (error) => error.status === 400)
   await assert.rejects(criarTorre('  ', { fetchImpl }), (error) => error.status === 400)
 })

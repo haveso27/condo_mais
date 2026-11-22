@@ -15,6 +15,8 @@ export function toUnit(apartamento, towerNames = {}) {
     tower: apartamento.torreId ? towerNames[apartamento.torreId] || '' : '',
     towerId: apartamento.torreId || '',
     status: (apartamento.status || '').toUpperCase(),
+    // Andar informado pela API (gerado pelo Setup Wizard; térreo = 0). Desenha a fachada; ausente = null
+    floor: Number.isInteger(apartamento.andar) ? apartamento.andar : null,
     owners: [],
     residents: [],
   }
@@ -113,7 +115,8 @@ export async function criarTorre(nome, options) {
 export async function salvarUnidade(form, editingId, towers, options) {
   const tower = towers.find((item) => item.name === form.tower)
   if (!tower) throw new ApiError(400, 'Selecione uma Torre / Bloco existente.')
-  const body = { numero: form.number.trim(), status: form.status, torreId: tower.id, condominioId: condominioId() }
+  // A API grava o andar enviado (inclusive nulo): na edição, reenvia o andar atual para não apagar o que o Setup Wizard gerou
+  const body = { numero: form.number.trim(), status: form.status, torreId: tower.id, condominioId: condominioId(), ...(Number.isInteger(form.floor) ? { andar: form.floor } : {}) }
   return editingId ? apiPut(`/condominios/apartamentos/${editingId}`, body, options) : apiPost('/condominios/apartamentos', body, options)
 }
 

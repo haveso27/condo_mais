@@ -1,93 +1,111 @@
-import { AlertTriangle, BellRing, CalendarClock, CalendarDays, Package, Settings2, UsersRound, Wrench } from 'lucide-react'
+import { AlertTriangle, CalendarDays, ChevronRight, Megaphone, Package, UserRound, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import LoadNotice from '../../components/LoadNotice'
 import Modal from '../../components/Modal'
+import { loadState } from '../../features/dashboard/dashboardData'
+import { confirmationMessage } from '../../config/uiPresentation'
 import { useAppData } from '../../context/AppDataContext'
+import { unitFloor } from '../../features/facade/facadeData'
+import { residentFeed } from '../../features/morador/residentFeed'
 import ResidentLayout from '../../layouts/ResidentLayout'
-import { sameUnit, futureReservations, activeNotices, statusLabel } from '../../services/serviceUtils'
-import { visitorEffectiveStatus } from '../../services/visitantesService'
 
-const dashboardCards = [
-  { key: 'packages', label: 'Encomendas' },
-  { key: 'reservations', label: 'Reservas' },
-  { key: 'visitors', label: 'Visitantes' },
-  { key: 'tickets', label: 'Chamados' },
-  { key: 'notices', label: 'Avisos' },
-]
+const icons = { package: Package, visitor: UserRound, ticket: Wrench, payment: CalendarDays, reservation: CalendarDays, notice: Megaphone }
+// Itens que pedem atenção levam o selo +; os demais são só informação
+const fresh = ['approval', 'package', 'visitor', 'ticket', 'payment']
 
-const defaultCards = dashboardCards.map((item) => item.key)
+// O prédio em miniatura com o apartamento aceso: "você mora aqui"
+function MiniTower({ unit }) {
+  const floor = unitFloor(unit)
+  const position = Number(String(unit.number || '').slice(-2))
+  const litFloor = Number.isInteger(floor) && floor > 0 ? Math.min(floor, 8) : null
+  const litColumn = position > 0 ? ((position - 1) % 4) + 1 : null
+  const cells = []
+  for (let row = 8; row >= 1; row -= 1) for (let column = 1; column <= 4; column += 1) cells.push(<i key={`${row}-${column}`} className={row === litFloor && column === litColumn ? 'acesa' : undefined} />)
+  return <span className="mini-torre" aria-hidden="true">{cells}</span>
+}
 
-function loadCards(residentId) {
-  try {
-    const stored = JSON.parse(localStorage.getItem(`condo-dashboard-cards-${residentId}`))
-    return Array.isArray(stored) ? stored.filter((key) => defaultCards.includes(key)) : defaultCards
-  } catch {
-    return defaultCards
-  }
+function packageCodeClass(code = '') {
+  return code.length > 6 ? 'codigo codigo--longo' : 'codigo'
 }
 
 export default function ResidentDashboard() {
   const navigate = useNavigate()
-  const { data, remote } = useAppData()
+  const { data, actions, remote } = useAppData()
   const resident = data.currentResident
-  const [visibleCards, setVisibleCards] = useState(() => loadCards(resident.id))
-  const [draftCards, setDraftCards] = useState(visibleCards)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const packageCount = data.packages.filter((item) => sameUnit(item, resident) && item.status === 'AGUARDANDO_RETIRADA').length
-  const visitorCount = data.visitors.filter((item) => sameUnit(item, resident) && ['AUTORIZADO', 'ENTROU'].includes(visitorEffectiveStatus(item))).length
-  // Na API os chamados já vêm só do morador e da unidade dele (inclusive os de área comum)
   const remoteTickets = Boolean(remote?.tickets && remote.tickets.status !== 'idle')
-  const ticketCount = data.tickets.filter((item) => (remoteTickets || sameUnit(item, resident)) && !['RESOLVIDO', 'ENCERRADO', 'CANCELADO'].includes(item.status)).length
-  const notices = activeNotices(data.notices, resident)
-  const noticeCount = notices.length
-  const urgentNotice = notices.find((item) => item.priority === 'URGENTE')
-  // Proprietário: reservas da unidade (de inquilinos) esperando a decisão dele
-  const pendingApprovals = resident.isOwner ? data.reservations.filter((item) => sameUnit(item, resident) && item.status === 'AGUARDANDO_APROVACAO') : []
-  const nextReservation = futureReservations(data.reservations.filter((item) => sameUnit(item, resident)))[0]
-  const cards = [
-    { key: 'packages', icon: Package, label: 'Encomendas', value: packageCount, detail: 'aguardando', route: '/morador/comunicados' },
-    { key: 'reservations', icon: CalendarDays, label: 'Próxima reserva', value: nextReservation ? `${nextReservation.date.slice(8, 10)}/${nextReservation.date.slice(5, 7)} · ${nextReservation.startTime}` : 'Nenhuma', detail: nextReservation?.area || 'Sem reserva', route: '/morador/reservas' },
-    { key: 'visitors', icon: UsersRound, label: 'Visitantes', value: visitorCount, detail: 'autorizado(s) no período', route: '/morador/visitantes' },
-    { key: 'tickets', icon: Wrench, label: 'Chamados', value: ticketCount, detail: 'em acompanhamento', route: '/morador/chamados' },
-    { key: 'notices', icon: BellRing, label: 'Avisos', value: noticeCount, detail: 'avisos ativos', route: '/morador/comunicados' },
-  ]
+  const remoteReservations = Boolean(remote?.reservations && remote.reservations.status !== 'idle')
+  const { urgent: urgentNotice, items } = residentFeed(data, { remoteTickets })
+  const [pending, setPending] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [parcel, setParcel] = useState(null)
+  const [feedback, setFeedback] = useState('')
+  const feedState = loadState(remote, ['packages', 'reservations', 'visitors', 'tickets', 'notices'])
+  const ownUnit = (data.units || []).find((unit) => unit.id && unit.id === resident.unitId) || { number: resident.unit, floor: null }
+  const flash = (message) => { setFeedback(message); setTimeout(() => setFeedback(''), 2600) }
 
-  function saveCards() {
-    setVisibleCards(draftCards)
-    try {
-      localStorage.setItem(`condo-dashboard-cards-${resident.id}`, JSON.stringify(draftCards))
-    } catch {
-      // Mantém a personalização durante a sessão quando o navegador bloqueia o armazenamento local.
-    }
-    setSettingsOpen(false)
+  function open(item) {
+    if (item.kind === 'package') return setParcel(item.record)
+    if (item.kind === 'notice') { const notice = item.record; return navigate(`/morador/comunicados/${encodeURIComponent(notice.id)}`) }
+    if (item.kind === 'visitor') return navigate('/morador/visitantes')
+    if (item.kind === 'ticket') return navigate('/morador/chamados')
+    return navigate('/morador/reservas')
   }
 
-  function toggleCard(key) {
-    setDraftCards((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])
+  async function confirm() {
+    if (busy || !pending) return
+    const { record, status } = pending
+    setBusy(true)
+    try {
+      if (remoteReservations) await actions.setReservationStatusRemote(record.id, status)
+      else actions.setReservationStatus(record.id, status)
+      flash(status === 'CONFIRMADA' ? 'Reserva aprovada.' : 'Reserva recusada.')
+    } catch (actionError) {
+      flash(actionError.message)
+    } finally {
+      setBusy(false); setPending(null)
+    }
   }
 
   return (
     <ResidentLayout>
-      <section className="resident-page resident-page--dashboard">
-        <h1>Olá, {resident.name.split(' ')[0]}! <span>👋</span></h1>
-        <p className="muted">Apartamento {resident.unit} · {resident.tower}</p>
-        {urgentNotice && <button className="urgent-alert" onClick={() => navigate(`/morador/comunicados/${encodeURIComponent(urgentNotice.id)}`)}><AlertTriangle /><span><small>Aviso urgente</small><strong>{urgentNotice.title}</strong><em>Ver detalhes →</em></span></button>}
-        {pendingApprovals.length > 0 && <button className="urgent-alert approval-alert" onClick={() => navigate('/morador/aprovacoes')}><CalendarClock /><span><small>Aprovação pendente</small><strong>{pendingApprovals.length === 1 ? '1 reserva aguarda sua aprovação' : `${pendingApprovals.length} reservas aguardam sua aprovação`}</strong><em>{pendingApprovals.length === 1 ? `${pendingApprovals[0].area} · ${pendingApprovals[0].date.slice(8, 10)}/${pendingApprovals[0].date.slice(5, 7)} · ${pendingApprovals[0].resident || 'morador da unidade'} — ` : ''}Analisar →</em></span></button>}
-        <div className="dashboard-summary-heading"><h2>Resumo</h2><button className="text-link" onClick={() => { setDraftCards(visibleCards); setSettingsOpen(true) }}><Settings2 size={15} /> Personalizar</button></div>
-        <div className="resident-stats">
-          {cards.filter((card) => visibleCards.includes(card.key)).map(({ key, icon: Icon, label, value, detail, route }) => <button key={key} onClick={() => navigate(route)}><Icon /><span><small>{label}</small><strong>{value}</strong><em>{detail}</em></span></button>)}
-          {visibleCards.length === 0 && <p className="dashboard-empty">Nenhum card selecionado. Use “Personalizar” para escolher as informações do resumo.</p>}
+      <section className="resident-page resident-page--dashboard inicio">
+        <header className="inicio__eu">
+          <MiniTower unit={ownUnit} />
+          <div><small>Olá, {resident.name.split(' ')[0]}</small><h1>Apartamento {resident.unit}{resident.tower ? ` · ${resident.tower}` : ''}</h1></div>
+        </header>
+        {urgentNotice && <button className="urgent-alert" onClick={() => navigate(`/morador/comunicados/${encodeURIComponent(urgentNotice.id)}`)}><AlertTriangle aria-hidden="true" /><span><small>Urgente</small><strong>{urgentNotice.title}</strong><em>Ver detalhes</em></span></button>}
+        <div className="inicio__sec"><h2>Para o {resident.unit || 'seu apartamento'}</h2><span>{items.length} {items.length === 1 ? 'novidade' : 'novidades'}</span></div>
+        <div className="feed">
+          {items.map((item) => {
+            const Icon = icons[item.kind]
+            const mark = fresh.includes(item.kind) ? <span className="selo" aria-hidden="true">+</span> : <span className="feed__icone" aria-hidden="true"><Icon size={17} /></span>
+            if (item.kind === 'approval') return <div className="item" key={item.id}>{mark}<div className="item__texto"><strong>{item.title}</strong><small>{item.text}</small>
+              <div className="item__bt"><button type="button" className="secondary-button btn-sm" onClick={() => setPending({ record: item.record, status: 'CONFIRMADA', label: 'Aprovar reserva' })}>Aprovar</button><button type="button" className="danger-button btn-sm" onClick={() => setPending({ record: item.record, status: 'RECUSADA', label: 'Recusar reserva' })}>Recusar</button></div></div></div>
+            return <button type="button" className="item item--link" key={item.id} onClick={() => open(item)}>{mark}<span className="item__texto"><strong>{item.title}</strong><small>{item.text}</small></span><ChevronRight size={16} aria-hidden="true" /></button>
+          })}
+          {(!items.length || feedState.errors.length > 0) && <LoadNotice state={feedState} empty={items.length ? null : <p className="dashboard-empty">Nada novo para a sua unidade por enquanto.</p>} />}
         </div>
-        <h2>Ações rápidas</h2>
-        <div className="quick-actions"><button onClick={() => navigate('/morador/visitantes')}>+ Autorizar visitante</button><button onClick={() => navigate('/morador/reservas')}>+ Fazer reserva</button></div>
-        <h2>Últimos avisos</h2>
-        <div className="notice-list">{notices.slice(0, 3).map((notice) => <button key={notice.id} onClick={() => navigate(`/morador/comunicados/${encodeURIComponent(notice.id)}`)}><i className={`dot ${notice.priority === 'URGENTE' ? 'red' : 'green'}`} /><span><strong>{notice.title}</strong><small>{notice.startDate} · {statusLabel(notice.priority)}</small></span><b>›</b></button>)}{!notices.length && <p className="dashboard-empty">Nenhum aviso ativo.</p>}</div>
-        <button className="text-link inline-link" onClick={() => navigate('/morador/comunicados')}>Ver todos os avisos →</button>
+        <div className="inicio__acoes">
+          <button className="wide-action" onClick={() => navigate('/morador/visitantes', { state: { create: true } })}>Autorizar visita</button>
+          <div className="quick-actions"><button onClick={() => navigate('/morador/reservas', { state: { create: true } })}>Reservar área</button><button onClick={() => navigate('/morador/chamados', { state: { create: true } })}>Abrir chamado</button></div>
+        </div>
       </section>
-      <Modal open={settingsOpen} title="Personalizar resumo" onClose={() => setSettingsOpen(false)} onConfirm={saveCards} confirmLabel="Salvar preferências">
-        <p className="form-note dashboard-settings-note">Escolha quais informações deseja visualizar no Dashboard.</p>
-        <div className="dashboard-card-options">{dashboardCards.map((card) => <label className="form-checkbox" key={card.key}><input type="checkbox" checked={draftCards.includes(card.key)} onChange={() => toggleCard(card.key)} /> {card.label}</label>)}</div>
+      <Modal open={Boolean(parcel)} title="Sua encomenda chegou" onClose={() => setParcel(null)}>
+        {parcel && <div className="encomenda">
+          <p className="muted">Está na portaria{parcel.receivedAt ? ` desde ${parcel.receivedAt}` : ''}.</p>
+          {parcel.code && <div className={packageCodeClass(parcel.code)}><small>Código da encomenda</small><b>{parcel.code}</b><span>Na portaria, informe o nome de quem vai retirar.</span></div>}
+          <dl className="dados">
+            {parcel.resident && <div><dt>Para</dt><dd>{parcel.resident}</dd></div>}
+            {parcel.doorman && <div><dt>Recebida por</dt><dd>{parcel.doorman}</dd></div>}
+            <div><dt>Unidade</dt><dd>{[parcel.tower, parcel.unit && `apto ${parcel.unit}`].filter(Boolean).join(', ')}</dd></div>
+          </dl>
+          <ol className="linha-tempo"><li className="ok"><strong>Chegou na portaria</strong>{parcel.receivedAt && <small>{parcel.receivedAt}</small>}</li><li><strong>Retirada</strong><small>Ainda não</small></li></ol>
+        </div>}
       </Modal>
+      <ConfirmDialog open={Boolean(pending)} title={pending?.label} message={confirmationMessage(pending?.record, pending?.label, pending?.status)} confirmLabel={busy ? 'Aguarde...' : pending?.label || 'Confirmar'} destructive={pending?.status === 'RECUSADA'} busy={busy} onCancel={() => setPending(null)} onConfirm={confirm} />
+      <div role="status" aria-live="polite" aria-atomic="true">{feedback && <div className="toast">{feedback}</div>}</div>
     </ResidentLayout>
   )
 }
