@@ -49,7 +49,7 @@ export const entityConfigs = {
   },
   unidades: {
     collection: 'units', title: 'Unidades', subtitle: 'Gerencie as unidades do condomínio.', action: 'Nova unidade', empty: 'Nenhuma unidade encontrada.',
-    tabs: [['Todas', []], ['Ocupadas', ['OCUPADO']], ['Livres', ['LIVRE']], ['Inativas', ['INATIVO']], ['Reservadas', ['RESERVADO']]],
+    tabs: [['Todas', []], ['Ocupadas', ['OCUPADO']], ['Livres', ['LIVRE']], ['Inativas', ['INATIVO']], ['Reservadas', ['RESERVADO']], ['Com pendência', [], 'pending']],
     columns: [['Unidade', 'number'], ['Torre / Bloco', 'tower'], ['Proprietários', 'owners'], ['Moradores', 'residents'], ['Status', 'status']],
     fields: [{ key: 'tower', label: 'Torre / Bloco', type: 'select', options: towers.slice(0, 3), required: true }, { key: 'number', label: 'Número / identificação', required: true }, { key: 'status', label: 'Status', type: 'select', options: ['LIVRE', 'INATIVO', 'RESERVADO'], required: true }, { key: 'owner', label: 'Proprietário vinculado' }, { key: 'resident', label: 'Morador vinculado' }],
   },
